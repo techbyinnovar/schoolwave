@@ -1,0 +1,157 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/prisma/client';
+import { decode } from 'next-auth/jwt';
+
+// Create a new message template (POST /api/messages)
+export async function POST(req: NextRequest) {
+  try {
+    // Get all cookies for debugging
+    console.log('Cookies object:', req.cookies);
+    
+    // Get the session token from cookies - try all possible cookie names
+    // In Next.js App Router, cookies are accessed differently
+    const cookieHeader = req.headers.get('cookie') || '';
+    console.log('Cookie header:', cookieHeader);
+    
+    // Parse cookie header manually
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      if (key) acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+    
+    console.log('Parsed cookies:', cookies);
+    
+    // Try to find the session token
+    const sessionToken = 
+      cookies['next-auth.session-token'] || 
+      cookies['__Secure-next-auth.session-token'] ||
+      cookies['__Host-next-auth.session-token'];
+      
+    if (!sessionToken) {
+      console.error('No session token found in cookies');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    console.log('Found session token:', sessionToken);
+    
+    // Decode the JWT token
+    const token = await decode({
+      token: sessionToken,
+      secret: process.env.AUTH_SECRET || '',
+    });
+    
+    console.log('Decoded token:', token);
+    if (!token || !token.role || token.role !== 'ADMIN') {
+      console.error('Unauthorized or missing role in token', { token });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // Parse request data
+    const data = await req.json();
+    console.log('Received data for template creation:', data);
+    const {
+      name,
+      subject,
+      emailHtml,
+      emailImages,
+      emailAttachments,
+      whatsappText,
+      whatsappImages
+    } = data;
+    
+    // Create the template in database
+    const template = await prisma.messageTemplate.create({
+      data: {
+        name,
+        subject,
+        emailHtml,
+        emailImages,
+        emailAttachments,
+        whatsappText,
+        whatsappImages,
+        createdById: token.sub as string, // token.sub contains the user ID
+      }
+    });
+    
+    return NextResponse.json({ template });
+  } catch (error) {
+    console.error('Error creating message template:', {
+      error,
+      message: (error as any)?.message,
+      stack: (error as any)?.stack,
+    });
+    return NextResponse.json({ error: 'Failed to create message template', details: (error as any)?.message }, { status: 500 });
+  }
+}
+
+// Update an existing message template (PATCH /api/messages/:id)
+export async function PATCH(req: NextRequest) {
+  try {
+    // Get all cookies for debugging
+    console.log('Cookies object:', req.cookies);
+    
+    // Get the session token from cookies - try all possible cookie names
+    // In Next.js App Router, cookies are accessed differently
+    const cookieHeader = req.headers.get('cookie') || '';
+    console.log('Cookie header:', cookieHeader);
+    
+    // Parse cookie header manually
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      if (key) acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+    
+    console.log('Parsed cookies:', cookies);
+    
+    // Try to find the session token
+    const sessionToken = 
+      cookies['next-auth.session-token'] || 
+      cookies['__Secure-next-auth.session-token'] ||
+      cookies['__Host-next-auth.session-token'];
+      
+    if (!sessionToken) {
+      console.error('No session token found in cookies');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    console.log('Found session token:', sessionToken);
+    
+    // Decode the JWT token
+    const token = await decode({
+      token: sessionToken,
+      secret: process.env.AUTH_SECRET || '',
+    });
+    
+    console.log('Decoded token:', token);
+    if (!token || !token.role || token.role !== 'ADMIN') {
+      console.error('Unauthorized or missing role in token', { token });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // Extract ID from URL
+    const url = new URL(req.url);
+    const id = url.pathname.split('/').pop();
+    if (!id) {
+      return NextResponse.json({ error: 'Missing template ID' }, { status: 400 });
+    }
+    
+    // Parse request data
+    const data = await req.json();
+    
+    // Update the template in database
+    const template = await prisma.messageTemplate.update({
+      where: { id },
+      data: {
+        ...data,
+        updatedAt: new Date(),
+      },
+    });
+    
+    return NextResponse.json({ template });
+  } catch (error) {
+    console.error('Error updating message template:', error);
+    return NextResponse.json({ error: 'Failed to update message template' }, { status: 500 });
+  }
+}

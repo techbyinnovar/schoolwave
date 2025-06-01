@@ -1,0 +1,153 @@
+@import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateX(-100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0px);
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+.blk {
+  animation: appear linear;
+  animation-timeline: view();
+  animation-range: entry 5% cover 40%;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.grad {
+  background: url('/sch_element1.png'), linear-gradient(180deg, #00164E, #00164E);
+  background-position: center;
+  background-size: contain;
+}
+.bg-grad {
+  background: url('/sch_element1.png'), linear-gradient(180deg, #00164E, #00164E);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.marquee-up {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+.marquee-down {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+.marquee-left {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+.marqueeContentUp {
+  display: flex;
+  flex-direction: column;
+  /* white-space: nowrap;  */
+  animation: marquee-up 30s linear infinite; 
+  animation-iteration-count: infinite !important;
+  /* animation-play-state: running; */
+  /* animation-range: ; */
+}
+
+.marqueeContentDown {
+  display: flex;
+  flex-direction: column;
+  /* white-space: nowrap;  */
+  animation: marquee-down 30s linear infinite; 
+}
+
+.marqueeContentLeft {
+  display: flex;
+  flex-direction: row;
+  white-space: nowrap; 
+  animation: marquee-left 30s linear infinite; 
+}
+
+.marqueeContentUp:hover {
+  animation-delay: 50s;
+}
+
+.marqueeContentDown:hover {
+  animation-delay: 50s;
+}
+
+@keyframes marquee-up {
+  0% {
+    transform: translateY(100%); 
+  }
+  100% {
+    transform: translateY(-100%); 
+  }
+}
+
+@keyframes marquee-down {
+  0% {
+    transform: translateY(-100%); 
+  }
+  100% {
+    transform: translateY(100%); 
+  }
+}
+
+@keyframes marquee-left {
+  0% {
+    transform: translateX(0%); 
+  }
+  100% {
+    transform: translateX(-50%); 
+  }
+}
+
+.parent-element {
+  display: block;
+}
+
+.hidden-element {
+  display: none;
+}
+
+.parent-element:hover .hidden-element {
+  display: block;
+}

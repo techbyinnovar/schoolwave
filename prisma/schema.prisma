@@ -1,0 +1,209 @@
+// Prisma schema for SchoolWave CRM/CMS
+// User roles: ADMIN, CONTENT_ADMIN, AGENT
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CONTENT_ADMIN
+  AGENT
+}
+
+enum MessageStatus {
+  DRAFT
+  SENT
+  DELIVERED
+  FAILED
+}
+
+
+model Stage {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  order     Int      // for sorting columns
+  leads     Lead[]
+  color     String?  // optional for UI
+  defaultTemplateId String? // optional relation to MessageTemplate
+  defaultTemplate   MessageTemplate? @relation("DefaultTemplateForStage", fields: [defaultTemplateId], references: [id])
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  leads     Lead[]   @relation("AgentLeads")
+  notes     Note[]   @relation("UserNotes")
+  leadHistory LeadHistory[] @relation("UserLeadHistory")
+  messageTemplates MessageTemplate[] 
+  sentMessages Message[] @relation("SentMessages")
+}
+
+model Lead {
+  id          String   @id @default(uuid())
+  schoolName  String
+  name        String
+  phone       String
+  email       String
+  address     String
+  assignedTo  String?  // User.id of agent, nullable for unassigned
+  agent       User?    @relation("AgentLeads", fields: [assignedTo], references: [id])
+  stageId     String
+  stage       Stage    @relation(fields: [stageId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  notes       Note[]
+  history     LeadHistory[]
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], name: "UserNotes")
+}
+
+model LeadHistory {
+  id         String   @id @default(uuid())
+  type       String
+  fromStage  String?
+  toStage    String?
+  actionType String?
+  note       String?
+  createdAt  DateTime @default(now())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], name: "UserLeadHistory")
+}
+
+model Action {
+  id   String @id @default(uuid())
+  name String @unique
+}
+
+model Setting {
+  key   String @id
+  value Json?
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String
+  address   String?
+  invoices  Invoice[]
+  subscriptions Subscription[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscription {
+  id             String   @id @default(uuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  planName       String
+  startDate      DateTime
+  endDate        DateTime?
+  studentCount   Int
+  discountPercent Int?
+  terms          Int      @default(1) // Number of terms for the main subscription
+  addons         Json     @default("[]") // Each addon should be an object with its own 'terms' property, e.g. [{ name: ..., price: ..., terms: ... }, ...]
+  invoices       Invoice[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  invoiceNumber  String   @unique // 6-digit invoice number for human reference
+  amount         Float
+  status         String
+  dueDate        DateTime
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  lineItems      Json @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum SenderType {
+  USER
+  SYSTEM
+}
+
+model Message {
+  id         String        @id @default(uuid())
+  subject    String?
+  body       String
+  status     MessageStatus @default(DRAFT)
+  senderType SenderType    @default(USER)
+  senderId   String?       // nullable, only set if senderType is USER
+  sender     User?         @relation("SentMessages", fields: [senderId], references: [id])
+  recipient  String        // recipient can be email, phone, etc.
+  templateId String?       // nullable, only set if a template was used
+  template   MessageTemplate? @relation("MessageTemplateMessages", fields: [templateId], references: [id])
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model MessageTemplate {
+  id            String   @id @default(uuid())
+  name          String
+  subject       String? // For email
+  emailHtml     String? // HTML body for email
+  emailImages   String[] // URLs for embedded images (in-body)
+  emailAttachments String[] // URLs for attachments
+  whatsappText  String? // Text for WhatsApp
+  whatsappImages String[] // URLs for WhatsApp images
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  defaultForStages Stage[] @relation("DefaultTemplateForStage")
+  messages      Message[] @relation("MessageTemplateMessages")
+}
+
+model AcademicYear {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean  @default(false)
+  terms       Term[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("academic_years")
+}
+
+model Term {
+  id             String   @id @default(uuid())
+  name           String   // e.g., "1st Term", "2nd Term", "3rd Term"
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  startDate      DateTime
+  endDate        DateTime
+  isCurrent      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([academicYearId, name])
+  @@map("terms")
+}
