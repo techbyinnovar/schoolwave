@@ -1,4 +1,28 @@
 // Prisma schema for SchoolWave CRM/CMS
+
+model Blog {
+  id          String    @id @default(uuid())
+  title       String
+  slug        String    @unique
+  content     String    @db.Text
+  excerpt     String?   @db.Text
+  coverImage  String?
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  authorId    String
+  author      User      @relation("UserBlogPosts", fields: [authorId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // New fields inspired by PocketBase
+  featured    Boolean   @default(false)
+  category    String?   // For now, simple text. Can be evolved to a relation.
+  keyphrase   String?
+  tags        String?   // For now, simple text (e.g., comma-separated). Can be evolved.
+
+  @@map("blogs")
+}
+
 // User roles: ADMIN, CONTENT_ADMIN, AGENT
 
 generator client {
@@ -47,6 +71,7 @@ model User {
   leadHistory LeadHistory[] @relation("UserLeadHistory")
   messageTemplates MessageTemplate[] 
   sentMessages Message[] @relation("SentMessages")
+  posts     Blog[]   @relation("UserBlogPosts")
 }
 
 model Lead {
