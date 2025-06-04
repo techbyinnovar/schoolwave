@@ -32,17 +32,36 @@ interface Blog {
 }
 
 async function getPost(slug: string): Promise<Blog | null> {
+  const apiUrl = `/api/blogs/${slug}`;
   try {
-    const res = await fetch(`/api/blogs/${slug}`, { cache: 'no-store' });
+    const res = await fetch(apiUrl, { cache: 'no-store' });
     if (!res.ok) {
-      if (res.status === 404) return null;
-      console.error(`Failed to fetch post '${slug}': ${res.status} ${res.statusText}`);
-      throw new Error(`Failed to fetch post: ${res.statusText}`);
+      const errorBody = await res.text();
+      console.error(`[CLIENT_ERROR] getPost - Failed to fetch post '${slug}' from ${apiUrl}. Status: ${res.status}. Response: ${errorBody}`);
+      if (res.status === 404) return null; // Specific handling for 404
+      throw new Error(`Failed to fetch post: ${res.statusText}. Status: ${res.status}`);
     }
-    return res.json();
-  } catch (error) {
-    console.error(`Error fetching post '${slug}':`, error);
-    return null;
+    // It's good practice to also check if the response is actually JSON
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+        const postData = await res.json();
+        if (!postData || typeof postData.id === 'undefined') { // Basic check for a valid post object
+            console.error(`[CLIENT_ERROR] getPost - Invalid post data structure received from ${apiUrl} for slug '${slug}'. Got:`, postData);
+            throw new Error('Invalid post data structure received from API.');
+        }
+        return postData;
+    } else {
+        const textResponse = await res.text();
+        console.error(`[CLIENT_ERROR] getPost - Expected JSON response from ${apiUrl} for slug '${slug}', but got ${contentType}. Response: ${textResponse}`);
+        throw new Error(`Unexpected response type from API: ${contentType}`);
+    }
+  } catch (error: any) {
+    console.error(`[CLIENT_ERROR] getPost - Exception during fetch for slug '${slug}' from ${apiUrl}. Error: ${error.message}`, error);
+    // If already an Error object, rethrow it, otherwise wrap it
+    if (error instanceof Error) throw error; // Re-throw to be handled by useEffect's catch or component boundary
+    // For other types of errors caught here, returning null might be appropriate if the page can handle it
+    // Or re-throw a new generic error if it should propagate to an error boundary
+    return null; 
   }
 }
 
@@ -103,54 +122,65 @@ export default function BlogPostPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white ">
       <div className='bg-[#00164E] sticky top-0 z-50'>
         <Header />
       </div>
 
-      <article className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 max-w-4xl">
-        <header className="mb-8 lg:mb-12 text-center">
-          {post.category && (
-            <p className="text-sm text-indigo-600 font-semibold tracking-wide uppercase mb-2">
-              {post.category}
-            </p>
-          )}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight">
+      <main className="py-8 lg:py-12">
+        <article className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+          {/* 1. Title */}
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight mb-4 lg:mb-6">
             {post.title}
           </h1>
-          <div className="mt-4 text-sm text-gray-500">
-            {post.author?.name && <span>By {post.author.name}</span>}
-            {post.author?.name && post.publishedAt && <span className="mx-2">|</span>}
-            {post.publishedAt && <DateFormatter dateString={post.publishedAt} />}
-          </div>
-        </header>
 
-        {post.coverImage && (
-          <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden mb-8 lg:mb-12 shadow-lg">
-            <Image 
-              src={post.coverImage} 
-              alt={post.title} 
-              layout="fill" 
-              objectFit="cover" 
-              priority // Prioritize LCP element
+          {/* 2. Meta: Author, Date, Category */}
+          <div className="mb-6 lg:mb-8 text-sm text-gray-500 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {post.author?.name && (
+                <span>By {post.author.name}</span>
+            )}
+            {post.publishedAt && (
+              <>
+                {post.author?.name && <span className="hidden sm:inline">&bull;</span>} {/* Separator only if author is also present */}
+                <DateFormatter dateString={post.publishedAt} />
+              </>
+            )}
+            {post.category && (
+              <>
+                {(post.author?.name || post.publishedAt) && <span className="hidden sm:inline">&bull;</span>} {/* Separator if any prior item is present */}
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  {post.category}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* 3. Cover Image */}
+          {post.coverImage && (
+            <div
+              className="w-full aspect-[16/9] rounded-lg overflow-hidden mb-8 lg:mb-12 shadow-lg bg-cover bg-center"
+              style={{ backgroundImage: `url(${post.coverImage})` }}
+              aria-label={`${post.title} cover image`}
             />
-          </div>
-        )}
+          )}
 
-        <div className="prose prose-indigo lg:prose-xl mx-auto">
-          <ReactMarkdown remarkPlugins={[gfm]} rehypePlugins={[rehypeRaw]}>
-            {post.content}
-          </ReactMarkdown>
-        </div>
-
-        {post.tags && post.tags.trim() !== '' && (
-          <div className="mt-12 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
-              Tags: {post.tags.split(',').map(tag => tag.trim()).join(', ')}
-            </p>
+          {/* 4. Text Content */}
+          <div className="prose prose-indigo lg:prose-xl max-w-none"> {/* max-w-none to allow prose to fill container */}
+            <ReactMarkdown remarkPlugins={[gfm]} rehypePlugins={[rehypeRaw]}>
+              {post.content}
+            </ReactMarkdown>
           </div>
-        )}
-      </article>
+
+          {/* Tags */}
+          {post.tags && post.tags.trim() !== '' && (
+            <div className="mt-12 pt-6 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Tags: {post.tags.split(',').map(tag => tag.trim()).join(', ')}
+              </p>
+            </div>
+          )}
+        </article>
+      </main>
       
       <Footer />
     </div>

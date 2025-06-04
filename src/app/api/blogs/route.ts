@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  console.log('[DEBUG] Entering /api/blogs GET handler...');
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -125,8 +126,12 @@ export async function GET(request: NextRequest) {
         totalPosts,
       }
     });
-  } catch (error) {
-    console.error('Error fetching blog posts:', error);
-    return NextResponse.json({ error: 'Failed to fetch blog posts' }, { status: 500 });
+  } catch (error: any) {
+    console.error(`[API_ERROR] /api/blogs GET - Error fetching blog posts. Request URL: ${request.url}, Error: ${error.message}`, { 
+      details: error,
+      stack: error.stack,
+      searchParams: Object.fromEntries(searchParams.entries())
+    });
+    return NextResponse.json({ error: 'Failed to fetch blog posts', message: error.message || 'An unexpected error occurred' }, { status: 500 });
   }
 }
