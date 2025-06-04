@@ -77,21 +77,34 @@ export default function BlogPostPage() {
       const fetchPostData = async () => {
         setLoading(true);
         setError(null);
-        const fetchedPost = await getPost(slug);
-        if (fetchedPost) {
-          setPost(fetchedPost);
-        } else {
-          setError('Blog post not found or failed to load.');
+        try {
+          const fetchedPost = await getPost(slug);
+          if (fetchedPost) {
+            console.log('Blog post data:', fetchedPost);
+            setPost(fetchedPost);
+          } else {
+            const errorMessage = 'Blog post not found or failed to load (slug: ' + slug + ').';
+            console.error('Error fetching post (handled by getPost):', errorMessage);
+            setError(errorMessage);
+          }
+        } catch (err: any) {
+          const errorMessage = `Failed to fetch post data for slug: ${slug}. Error: ${err.message}`;
+          console.error('Error in fetchPostData:', errorMessage, err);
+          setError(errorMessage);
         }
         setLoading(false);
       };
       fetchPostData();
     } else if (params && typeof params.slug !== 'string') {
-      // Handle case where slug might not be available or is not a string initially
-      // This might happen during Next.js hydration or if params are not immediately ready
-      // console.warn('Slug is not available or not a string:', params.slug);
-      // setLoading(false); // Potentially stop loading if slug is definitively invalid/missing
-      // setError('Invalid blog post URL.');
+      const errorMsg = 'Invalid or missing slug in URL parameters.';
+      console.error(errorMsg, 'Params:', params);
+      setError(errorMsg);
+      setLoading(false);
+    } else if (!slug && params && Object.keys(params).length === 0) {
+      // This case might occur if params is initially empty and slug is derived later
+      // We might not want to set an error immediately, or log a specific warning
+      console.warn('Slug not yet available, params object is empty. Waiting for slug update.');
+      // setLoading(true); // Ensure loading stays true if we expect slug soon
     }
   }, [slug, params]);
 
