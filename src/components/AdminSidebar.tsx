@@ -22,6 +22,8 @@ export default function AdminSidebar() {
             <Link href="/admin" className="text-blue-700 font-semibold hover:underline">Dashboard</Link>
             <Link href="/admin/users" className="text-gray-800 hover:text-blue-700">Users</Link>
             <Link href="/admin/crm" className="text-gray-800 hover:text-blue-700">CRM</Link>
+            <Link href="/admin/blogs" className="text-gray-800 hover:text-blue-700">Blog</Link>
+            <Link href="/admin/webinars" className="text-gray-800 hover:text-blue-700">Webinars</Link>
             <Link href="/admin/customer" className="text-gray-800 hover:text-blue-700">Customers</Link>
             <Link href="/admin/invoice" className="text-gray-800 hover:text-blue-700">Invoices</Link>
             <Link href="/admin/subscription" className="text-gray-800 hover:text-blue-700">Subscriptions</Link>

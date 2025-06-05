@@ -1,6 +1,6 @@
 // REST API for User CRUD
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from "@/prisma/client";
+import { prisma } from "../../../../prisma/client";
 
 
 export async function GET(req: NextRequest) {

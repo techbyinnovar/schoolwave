@@ -23,6 +23,42 @@ model Blog {
   @@map("blogs")
 }
 
+model Webinar {
+  id              String    @id @default(cuid()) // Using cuid() for consistency if other models use it, or uuid()
+  title           String
+  slug            String    @unique
+  subtitle        String?
+  description     String?   @db.Text
+  coverImage      String?
+  dateTime        DateTime  // Combined date and time
+  durationMinutes Int?      // Duration in minutes
+  platform        String?   // e.g., "Zoom", "Google Meet", "Online"
+  
+  facilitators    Json?     // JSON field for a list of facilitators: [{ name: "John Doe", title: "Expert", bio: "...", imageUrl: "..." }]
+
+  isFree          Boolean   @default(true)
+  price           Float?    // Only relevant if isFree is false
+  
+  attendeeLimit   Int?
+  registrationOpen Boolean  @default(true) // To control if new registrations are accepted
+
+  published       Boolean   @default(false)
+  publishedAt     DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Optional: For categorization and filtering
+  category        String?
+  tags            String?   // Comma-separated or consider a separate Tag model
+
+  // Relation to User who created/manages this webinar
+  authorId        String?   
+  author          User?     @relation("UserWebinars", fields: [authorId], references: [id])
+
+  @@map("webinars")
+}
+
 // User roles: ADMIN, CONTENT_ADMIN, AGENT
 
 generator client {
@@ -72,6 +108,7 @@ model User {
   messageTemplates MessageTemplate[] 
   sentMessages Message[] @relation("SentMessages")
   posts     Blog[]   @relation("UserBlogPosts")
+  webinars  Webinar[] @relation("UserWebinars") // Relation for webinars authored by the user
 }
 
 model Lead {

@@ -310,7 +310,7 @@ export default function FeaturesPage() {
       </div>
 
       <div className="relative lg:-bottom-10 bottom-0 z-0 mb-0">
-        <Image src={lightblue_bg} alt="light blue background" className="" />
+        <Image src={lightblue_bg} alt="light blue background" fill style={{ objectFit: 'cover' }} className="" />
       </div>
 
       {/* SCHOOLS BENEFITS */}
@@ -418,7 +418,7 @@ export default function FeaturesPage() {
           </button></Link>
         </div>
         <div className='lg:block md:block hidden w-[23%] lg:mr-[0px] py-0 pr-6'>
-          <Image src={signup} alt="school sign up illustration" />
+          <Image src={signup} alt="school sign up illustration" width={300} height={300} />
         </div>
       </div>
 

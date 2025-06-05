@@ -8,7 +8,7 @@ import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import DateFormatter from '@/src/app/test_blog/components/date'; // Verify this path
+import DateFormatter from '@/app/test_blog/components/date'; // Verify this path
 
 // Consider moving to a shared types file, e.g., src/types/blog.ts
 interface Blog {

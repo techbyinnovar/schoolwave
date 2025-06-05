@@ -7,11 +7,11 @@ import Image from 'next/image'
 import localFont from 'next/font/local'
 
 const polysans = localFont({ 
-  src: '../public/fonts/PolySans Bulky.woff'
+  src: '../../public/fonts/PolySans Bulky.woff'
 })
 
 const polysansSlim = localFont({ 
-  src: '../public/fonts/PolySans Neutral.woff2'
+  src: '../../public/fonts/PolySans Neutral.woff2'
 })
 
 const Footer =()=>{
