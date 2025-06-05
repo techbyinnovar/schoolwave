@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
-import MessageTemplateForm from '@/src/app/admin/messages/MessageTemplateForm';
+import MessageTemplateForm from '@/app/admin/messages/MessageTemplateForm';
 
 export default function EditMessageTemplatePage() {
   const params = useParams();

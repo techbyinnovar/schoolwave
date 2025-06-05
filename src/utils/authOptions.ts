@@ -5,14 +5,15 @@ import type { JWT as NextAuthJWT } from "next-auth/jwt";
 
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "../prisma/client";
+import { Role } from "@prisma/client"; // Import Role
+import { prisma } from "../../prisma/client";
 import bcrypt from "bcryptjs";
 
 interface AuthorizedUser {
   id: string;
   email: string | null | undefined;
   name: string | null | undefined;
-  role: string | undefined;
+  role: Role; // Use Role type
 }
 
 export const authConfig: NextAuthConfig = {
@@ -29,7 +30,7 @@ export const authConfig: NextAuthConfig = {
         email: { label: "Email", type: "email", placeholder: "jsmith@example.com" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials): Promise<AuthorizedUser | null> { /* ... as before ... */
+      async authorize(credentials): Promise<(Omit<NextAuthUser, 'id' | 'role'> & { id: string; role: Role; }) | null> { // Align with augmented User /* ... as before ... */
         console.log("AUTHORIZE: Attempting authorization for email:", credentials?.email);
         if (!credentials || typeof credentials.email !== 'string' || typeof credentials.password !== 'string') {
           console.warn("AUTHORIZE: Missing or invalid credentials format.");
@@ -53,12 +54,16 @@ export const authConfig: NextAuthConfig = {
             console.warn(`AUTHORIZE: Invalid password for user: ${email}`);
             return null;
           }
+          if (!userFromDb.role) {
+            console.warn(`AUTHORIZE: User ${email} does not have a role. Authorization denied.`);
+            return null;
+          }
           console.log(`AUTHORIZE: Successfully authenticated user: ${email}.`);
           return {
             id: userFromDb.id,
             email: userFromDb.email,
             name: userFromDb.name,
-            role: userFromDb.role ?? undefined,
+            role: userFromDb.role, // userFromDb.role is now confirmed to be of type Role
           };
         } catch (error) {
           console.error("AUTHORIZE: CRITICAL UNHANDLED ERROR in authorize function:", error);
@@ -85,20 +90,22 @@ export const authConfig: NextAuthConfig = {
         return token;
       }
     },
-    async session({ session, token }: { session: NextAuthSession; token: NextAuthJWT; /* ... */ }) { /* ... as before ... */
+    async session({ session, token }: { session: NextAuthSession; token: NextAuthJWT; }) {
       console.log("SESSION_CALLBACK: Processing session. Token received:", { id: token.id, role: token.role, email: token.email });
       try {
-        if (session.user) {
-          if (typeof token.id === 'string') { (session.user as any).id = token.id; }
-          if (token.role !== undefined) { (session.user as any).role = token.role; }
-          if (token.email) { session.user.email = token.email as string; }
-          if (token.name !== undefined) { session.user.name = token.name as (string | null); }
-          console.log("SESSION_CALLBACK: Session user object updated:", session.user);
-        }
-        return session;
+        session.user = {
+          ...session.user, // Spread existing session.user properties (like name, email, image from DefaultSession)
+          id: token.id as string,
+          role: token.role as Role,
+        }; 
+        if (token.email) session.user.email = token.email as string;
+        if (token.name) session.user.name = token.name as string | null;
+
+        console.log("SESSION_CALLBACK: Session user object updated:", session.user);
+        return session; // Allow TS to infer the augmented Session type
       } catch (error) {
         console.error("SESSION_CALLBACK: Error processing session:", error);
-        return session;
+        return session; // Return original session on error
       }
     },
   },

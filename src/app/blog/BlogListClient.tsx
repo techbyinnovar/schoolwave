@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import DateFormatter from '@/src/app/test_blog/components/date'; // Ensure this path is correct
+import DateFormatter from '@/app/test_blog/components/date'; // Ensure this path is correct
 
 // Define the Blog type (should match the one in page.tsx or a shared types file)
 interface Blog {

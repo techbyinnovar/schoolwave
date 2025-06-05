@@ -4,17 +4,17 @@ import { useState, useEffect } from 'react'
 import { Modal } from './Modal'
 import { DemoForm } from './DemoForm'
 import Image from 'next/image'
-import sch_kid from '../public/school_kid.png'
-import check from '../public/check2.png'
+import sch_kid from '../../public/school_kid.png'
+import check from '../../public/check2.png'
 import localFont from 'next/font/local'
 import Link from 'next/link'
 
 const polysansBold = localFont({
-  src: '../public/fonts/PolySans Bulky.woff',
+  src: '../../public/fonts/PolySans Bulky.woff',
   weight: 'normal',
 })
 const polysansSlim = localFont({
-  src: '../public/fonts/PolySans Slim.woff',
+  src: '../../public/fonts/PolySans Slim.woff',
   weight: 'normal',
 })
 

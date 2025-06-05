@@ -5,8 +5,8 @@ import { Modal } from './Modal'
 import { DemoForm } from './DemoForm'
 import { ContactForm } from './ContactForm'
 import SignupLeadModal from './SignupLeadModal';
-import sch_concept from '../public/school_concept.png'
-import signup from '../public/sign_up.png'
+import sch_concept from '../../public/school_concept.png'
+import signup from '../../public/sign_up.png'
 
 const CallToAction =()=>{
 
