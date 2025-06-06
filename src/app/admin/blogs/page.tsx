@@ -1,6 +1,6 @@
 import { auth } from '@/auth'; // Assuming NextAuth.js v5 setup
 import { redirect } from 'next/navigation';
-import BlogListClient from '@/src/components/admin/blogs/BlogListClient';
+import BlogListClient from '@/components/admin/blogs/BlogListClient';
 import Link from 'next/link';
 
 export default async function AdminBlogPage() {

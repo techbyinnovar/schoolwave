@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/prisma/client';
+import { db as prisma } from '@/lib/db';
 
 
 // GET /api/message-template/[id]

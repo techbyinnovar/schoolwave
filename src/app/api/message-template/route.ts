@@ -1,6 +1,6 @@
 // REST API for GET message templates
 import { NextResponse } from 'next/server';
-import { prisma } from "@/prisma/client";
+import { db as prisma } from '@/lib/db';
 
 
 export async function GET() {

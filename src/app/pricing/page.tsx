@@ -25,7 +25,7 @@ export default function page({ min, max, step, value, handleSlider }: any) {
       <div className='h-fit lg:w-[90%] w-full lg:mx-auto mx-0 pt-[80px] mb-0 pb-24'>
         <h1 className='text-center text-xl text-[#0045F6] font-semibold'>Pricing</h1>
         <h1 className='text-center text-black text-4xl font-bold lg:px-0 px-10'>Flexible Pricing Plan for Every School</h1>
-        <p className='text-black text-center mt-[20px] lg:w-[60%] w-[90%] mx-auto lg:px-0 px-4'>Choose a plan that suits your school's needs. Whether you're managing a Montessori, Primary or Secondary School, Schoolwave has the perfect solution for you.</p>
+        <p className='text-black text-center mt-[20px] lg:w-[60%] w-[90%] mx-auto lg:px-0 px-4'>Choose a plan that suits your school&apos;s needs. Whether you&apos;re managing a Montessori, Primary or Secondary School, Schoolwave has the perfect solution for you.</p>
         
         <div className='lg:flex lg:space-x-8 justify-between lg:w-[50%] w-full lg:mt-[5px] mt-[20px] lg:px-0 px-10 mx-auto h-fit'>
           <Price

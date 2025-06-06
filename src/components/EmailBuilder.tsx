@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { PanelLeft, Code, Save, Download, Undo, Redo } from 'lucide-react';
-import { Element, ElementType } from '../types/email';
+import { Element, ElementType } from '../../types/email';
 import ElementLibrary from './ElementLibrary';
 import EmailCanvas from './EmailCanvas';
 import PropertyPanel from './PropertyPanel';

@@ -49,7 +49,7 @@ export default function BlogListClient({ posts, fetchError }: BlogListClientProp
   return (
     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-[70%] mx-auto'>
       {posts.map((post: Blog) => (
-        <div key={post.id} className='bg-white hover:bg-[#00164E] rounded-lg shadow-md overflow-hidden flex flex-col group'>
+        <div key={post.id} className='bg-white shadow-xl rounded-xl overflow-hidden flex flex-col hover:shadow-2xl transition-shadow duration-300'>
           <Link href={`/blog/${post.slug}`} className='block'>
             <div className='relative w-full aspect-[4/3] overflow-hidden'>
               {post.coverImage ? (
@@ -57,11 +57,11 @@ export default function BlogListClient({ posts, fetchError }: BlogListClientProp
                   src={post.coverImage} 
                   alt={post.title || 'Blog post image'}
                   width={500}
-                  height={375} // Adjusted for 4/3 aspect ratio
-                  style={{ objectFit: 'cover' }} // Replaced objectFit prop with style
-                  className='group-hover:scale-105 transition-transform duration-300 ease-in-out'
+                  height={375}
+                  style={{ objectFit: 'cover' }}
+                  className='transition-transform duration-300 ease-in-out' // Removed group-hover:scale-105, individual hover can be added if needed
                   sizes='(min-width: 1024px) 23vw, (min-width: 768px) 35vw, 70vw'
-                  priority={posts.indexOf(post) < 3} // Prioritize first few images
+                  priority={posts.indexOf(post) < 3}
                 />
               ) : (
                 <div className='w-full h-full bg-gray-200 flex items-center justify-center text-gray-400'>
@@ -71,20 +71,20 @@ export default function BlogListClient({ posts, fetchError }: BlogListClientProp
             </div>
           </Link>
           <div className='p-6 flex flex-col flex-grow'>
-            <h2 className='text-xl font-semibold text-gray-800 mb-2 group-hover:text-white transition-colors duration-300'>
+            <h2 className='text-xl font-bold text-gray-800 mb-3 hover:text-indigo-600 transition-colors duration-300'>
               <Link href={`/blog/${post.slug}`}>{post.title}</Link>
             </h2>
             {post.excerpt && (
-              <p className='text-gray-600 text-sm mb-3 flex-grow group-hover:text-gray-300'>{post.excerpt.substring(0, 100)}{post.excerpt.length > 100 ? '...' : ''}</p>
+              <p className='text-gray-700 text-sm mb-3 flex-grow'>{post.excerpt.substring(0, 100)}{post.excerpt.length > 100 ? '...' : ''}</p>
             )}
             {post.publishedAt && (
-              <p className='text-gray-500 text-xs mb-4 group-hover:text-gray-400'>
+              <p className='text-gray-500 text-xs mb-4'>
                 <DateFormatter dateString={post.publishedAt} />
               </p>
             )}
             <Link 
               href={`/blog/${post.slug}`} 
-              className='mt-auto inline-block bg-gray-200 text-gray-700 hover:bg-[#0045f6] hover:text-white text-center py-2 px-4 rounded-md text-sm font-medium transition-colors duration-300 ease-in-out'>
+              className='mt-auto inline-block bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 text-center py-2 px-4 rounded-md text-sm font-medium transition-colors duration-300 ease-in-out'>
               Read More
             </Link>
           </div>

@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Edit, Trash2, Eye, Search, ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Edit, Trash2, Eye, Search, ChevronLeft, ChevronRight, CheckCircle, XCircle, Loader2, ClipboardList } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { Role } from '@prisma/client'; // Assuming Role is available
+
 import { useSession } from 'next-auth/react';
 
 // Define a more specific type for Webinar if it's different from Prisma's directly
@@ -98,8 +98,10 @@ export default function WebinarListClient({
     }
   };
 
+  const allowedRoles = ['ADMIN', 'CONTENT_ADMIN'];
+  // Use the same allowedRoles for all permission checks
   const handleDelete = async (id: string, title: string) => {
-    if (!session || !session.user || ![Role.ADMIN, Role.CONTENT_ADMIN].includes(session.user.role)) {
+    if (!session || !session.user || !allowedRoles.includes(session.user.role)) {
       Swal.fire('Forbidden', 'You do not have permission to delete webinars.', 'error');
       return;
     }
@@ -141,7 +143,7 @@ export default function WebinarListClient({
   };
 
   const handleTogglePublish = async (id: string, currentStatus: boolean, title: string) => {
-    if (!session || !session.user || ![Role.ADMIN, Role.CONTENT_ADMIN].includes(session.user.role as Role)) {
+    if (!session || !session.user || !allowedRoles.includes(session.user.role)) {
       Swal.fire('Forbidden', 'You do not have permission to change publish status.', 'error');
       return;
     }
@@ -253,6 +255,11 @@ export default function WebinarListClient({
                     <Link href={`/webinar/${webinar.slug}`} passHref legacyBehavior>
                       <a target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800" title="View Public Page">
                         <Eye size={18} />
+                      </a>
+                    </Link>
+                    <Link href={`/admin/webinars/${webinar.id}`} passHref legacyBehavior>
+                      <a className="text-gray-600 hover:text-gray-800" title="View Details & Registrants">
+                        <ClipboardList size={18} />
                       </a>
                     </Link>
                     <Link href={`/admin/webinars/edit/${webinar.id}`} passHref legacyBehavior>

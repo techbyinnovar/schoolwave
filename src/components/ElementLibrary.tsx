@@ -8,7 +8,7 @@ import {
   MousePointer, 
   SplitSquareVertical 
 } from 'lucide-react';
-import { ElementType } from '../types/email';
+import { ElementType } from '../../types/email';
 
 interface ElementLibraryProps {
   onAddElement: (type: ElementType) => void;

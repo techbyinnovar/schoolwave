@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Element, ElementType } from '../types/email';
+import { Element, ElementType } from '../../types/email';
 
 import { getDefaultContent, getDefaultStyles } from './EmailBuilder';
 

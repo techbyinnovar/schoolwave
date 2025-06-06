@@ -32,6 +32,7 @@ const WebinarUpdateSchema = z.object({
   // publishedAt is handled by published flag
   category: z.string().optional().nullable(), // Allow null
   tags: z.string().optional().nullable(), // Allow null
+  slug: z.string().optional(), // Allow slug updates
 });
 
 // Slugify function
@@ -99,8 +100,18 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const updatePayload: any = { ...parsedData.data };
 
-    // If title is being updated, regenerate slug
-    if (updatePayload.title) {
+    // If a custom slug is provided, use it (after slugifying and checking uniqueness)
+    if (typeof updatePayload.slug === 'string' && updatePayload.slug.trim().length > 0) {
+      let newSlug = slugify(updatePayload.slug);
+      let counter = 1;
+      const originalSlug = newSlug;
+      while (await prisma.webinar.findFirst({ where: { slug: newSlug, NOT: { id } } })) {
+        newSlug = `${originalSlug}-${counter}`;
+        counter++;
+      }
+      updatePayload.slug = newSlug;
+    } else if (updatePayload.title) {
+      // Only auto-generate from title if slug not provided
       let newSlug = slugify(updatePayload.title);
       let counter = 1;
       const originalSlug = newSlug;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/prisma/client';
+import { db as prisma } from '@/lib/db';
 
 // Utility: fetch settings by key
 async function fetchSetting(key: string) {

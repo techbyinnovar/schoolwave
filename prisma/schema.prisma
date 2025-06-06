@@ -35,6 +35,9 @@ model Webinar {
   platform        String?   // e.g., "Zoom", "Google Meet", "Online"
   
   facilitators    Json?     // JSON field for a list of facilitators: [{ name: "John Doe", title: "Expert", bio: "...", imageUrl: "..." }]
+  learningObjectives Json?    // Array of objects: e.g., [{ title: "Objective Title 1", content: "Details..." }]
+  targetAudience     Json?    // Array of objects: e.g., [{ title: "School Owners", description: "..."}]
+  whyAttendReasons   Json?    // Array of strings: e.g., ["Reason 1", "Reason 2"]
 
   isFree          Boolean   @default(true)
   price           Float?    // Only relevant if isFree is false
@@ -55,8 +58,29 @@ model Webinar {
   // Relation to User who created/manages this webinar
   authorId        String?   
   author          User?     @relation("UserWebinars", fields: [authorId], references: [id])
+  registrations   WebinarRegistration[]
 
   @@map("webinars")
+}
+
+model WebinarRegistration {
+  id            String   @id @default(cuid())
+  webinarId     String
+  webinar       Webinar  @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  leadId        String   // Each registration is linked to a Lead
+  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade) // Link to the Lead
+
+  // Optional: Link to an existing User if the registrant is logged in and is an existing User
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  registeredAt  DateTime @default(now())
+  paymentStatus String?  // e.g., "PAID", "PENDING_PAYMENT", "FREE"
+  attended      Boolean? @default(false)
+
+  @@unique([webinarId, leadId]) // Ensures a lead registers only once per webinar
+  @@map("webinar_registrations")
 }
 
 // User roles: ADMIN, CONTENT_ADMIN, AGENT
@@ -109,6 +133,7 @@ model User {
   sentMessages Message[] @relation("SentMessages")
   posts     Blog[]   @relation("UserBlogPosts")
   webinars  Webinar[] @relation("UserWebinars") // Relation for webinars authored by the user
+  webinarRegistrations WebinarRegistration[]
 }
 
 model Lead {
@@ -116,7 +141,7 @@ model Lead {
   schoolName  String
   name        String
   phone       String
-  email       String
+  email       String   @unique
   address     String
   assignedTo  String?  // User.id of agent, nullable for unassigned
   agent       User?    @relation("AgentLeads", fields: [assignedTo], references: [id])
@@ -126,6 +151,7 @@ model Lead {
   updatedAt   DateTime @updatedAt
   notes       Note[]
   history     LeadHistory[]
+  webinarRegistrations WebinarRegistration[]
 }
 
 model Note {

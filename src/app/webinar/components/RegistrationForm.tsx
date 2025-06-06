@@ -4,9 +4,20 @@ import { X, CheckCircle } from 'lucide-react';
 interface RegistrationFormProps {
   isOpen: boolean;
   onClose: () => void;
+  webinarId: string;
+  webinarTitle: string;
+  isFree: boolean;
+  price: number; // Or string if it includes currency
 }
 
-const RegistrationForm: React.FC<RegistrationFormProps> = ({ isOpen, onClose }) => {
+const RegistrationForm: React.FC<RegistrationFormProps> = ({ 
+  isOpen, 
+  onClose,
+  webinarId,
+  webinarTitle,
+  isFree,
+  price 
+}) => {
   const [formData, setFormData] = useState({
     fullName: '',
     whatsappNumber: '',
@@ -31,37 +42,38 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ isOpen, onClose }) 
           name: formData.fullName,
           phone: formData.whatsappNumber,
           email: formData.email,
-          schoolName: '', // Optionally add a field for school name later
-          address: '',    // Optionally add a field for address later
+          webinarId: webinarId, // Include webinarId
+          schoolName: '', 
+          address: '',    
         }),
       });
       if (res.ok) {
         setIsSubmitted(true);
         setTimeout(() => {
           onClose();
-          setIsSubmitted(false);
-          setFormData({
-            fullName: '',
-            whatsappNumber: '',
-            email: '',
-          });
-        }, 2000);
+          setIsSubmitted(false); // Reset for next open
+          setFormData({ fullName: '', whatsappNumber: '', email: '' }); // Clear form
+          setIsSubmitting(false); // Reset submitting state
+        }, 3000); // Increased timeout for user to read success message
       } else {
-        // Optionally handle/display error
+        const errorData = await res.json().catch(() => ({ message: 'Registration failed. Please try again.' }));
+        alert(errorData.message || 'Registration failed. Please try again.');
         setIsSubmitting(false);
-        alert('Registration failed. Please try again.');
       }
     } catch (error) {
+      console.error('Registration submission error:', error);
+      alert('An unexpected error occurred. Please try again.');
       setIsSubmitting(false);
-      alert('Registration failed. Please try again.');
     }
-    setIsSubmitting(false);
+    // setIsSubmitting(false); // Moved into try/catch/finally or individual paths
   };
 
   if (!isOpen) return null;
 
+  const registrationFeeText = isFree ? 'FREE' : `for $${price}`; // Basic price display
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-blue-950/80 backdrop-blur-sm" onClick={onClose}></div>
       
       <div className="relative w-full max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -70,7 +82,8 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ isOpen, onClose }) 
             <div className="absolute top-4 right-4">
               <button 
                 onClick={onClose}
-                className="p-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition"
+                className="p-1 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition"
+                aria-label="Close registration form"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -78,9 +91,9 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ isOpen, onClose }) 
             
             <div className="p-8">
               <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-blue-950">Register for the Free Webinar</h2>
+                <h2 className="text-2xl font-bold text-blue-950">Register for: {webinarTitle}</h2>
                 <p className="text-gray-600 mt-2">
-                  Secure your spot to learn proven strategies for reducing unpaid school fees
+                  Secure your spot {isFree ? 'for this insightful session' : `for only $${price}`}.
                 </p>
               </div>
               
@@ -141,7 +154,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ isOpen, onClose }) 
                       isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
                     }`}
                   >
-                    {isSubmitting ? 'Registering...' : 'REGISTER NOW'}
+                    {isSubmitting ? 'Registering...' : `REGISTER NOW ${registrationFeeText}`}
                   </button>
                 </div>
                 
@@ -161,7 +174,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ isOpen, onClose }) 
             </div>
             <h2 className="text-2xl font-bold text-blue-950 mb-2">Registration Successful!</h2>
             <p className="text-gray-600">
-              Thank you for registering! Check your email and WhatsApp for webinar details.
+              Thank you for registering for {webinarTitle}! Check your email and WhatsApp for webinar details.
             </p>
           </div>
         )}

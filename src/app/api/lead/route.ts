@@ -1,6 +1,7 @@
 // REST API for Lead CRUD
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from "@/prisma/client";
+import { db as prisma } from '@/lib/db';
+import { sendTemplateToLead } from './sendTemplateToLead';
 
 
 export async function GET(req: NextRequest) {
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ lead });
 }
 
-import { sendTemplateToLead } from '@/src/app/api/sendTemplateToLead';
+
 
 export async function PATCH(req: NextRequest) {
   const data = await req.json();

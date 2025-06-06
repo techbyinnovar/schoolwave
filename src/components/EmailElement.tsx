@@ -1,5 +1,5 @@
 import React from 'react';
-import { Element } from '../types/email';
+import { Element } from '../../types/email';
 import { AddElementToColumnButton } from './AddElementToColumnButton';
 // If needed, import getDefaultContent and getDefaultStyles from EmailBuilder or utils
 
