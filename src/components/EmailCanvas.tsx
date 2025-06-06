@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDrop } from 'react-dnd';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Element } from '../types/email';
+import { Element } from '../../types/email';
 import EmailElement from './EmailElement';
 
 interface EmailCanvasProps {

@@ -1,50 +1,19 @@
 "use client";
 
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, FieldPath } from 'react-hook-form';
+import get from 'lodash/get';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import { PlusCircle, Trash2, UploadCloud, XCircle } from 'lucide-react';
 import { useState } from 'react';
+import { CreateWebinarSchema, CreateWebinarFormData } from '@/lib/validators/webinarValidators';
+import dynamic from 'next/dynamic';
 
-// Zod Schema for Facilitator
-const facilitatorSchema = z.object({
-  name: z.string().min(1, "Facilitator name is required"),
-  title: z.string().optional(),
-  bio: z.string().optional(),
-  imageUrl: z.string().url("Invalid URL for image").optional().or(z.literal(''))
+const CloudinaryUploadWidget = dynamic(() => import('@/components/shared/CloudinaryUploadWidget'), {
+  ssr: false,
+  loading: () => <p>Loading uploader...</p> // Optional loading state
 });
-
-// Zod Schema for Create Webinar Form
-const createWebinarFormSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters long"),
-  subtitle: z.string().optional(),
-  description: z.string().optional(), // Consider a WYSIWYG editor for this
-  coverImage: z.string().url("Invalid URL format for cover image").optional().or(z.literal('')), 
-  date: z.string().min(1, "Date is required"), // Will be combined with time to form dateTime
-  time: z.string().min(1, "Time is required"),
-  durationMinutes: z.coerce.number().int().positive("Duration must be a positive integer"),
-  platform: z.string().min(1, "Platform is required (e.g., Zoom, Google Meet, Physical Location)"),
-  facilitators: z.array(facilitatorSchema).optional().default([]),
-  isFree: z.boolean().default(false),
-  price: z.coerce.number().nonnegative("Price must be a non-negative number").optional(),
-  attendeeLimit: z.coerce.number().int().positive("Attendee limit must be a positive integer").optional().nullable(),
-  registrationOpen: z.boolean().default(true),
-  published: z.boolean().default(false),
-  category: z.string().optional(),
-  tags: z.string().optional(), // Could be comma-separated, then processed
-}).refine(data => {
-  if (!data.isFree && (data.price === undefined || data.price === null || data.price < 0)) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Price is required and must be non-negative if the webinar is not free",
-  path: ["price"],
-});
-
-type CreateWebinarFormData = z.infer<typeof createWebinarFormSchema>;
 
 export default function CreateWebinarForm() {
   const router = useRouter();
@@ -58,20 +27,24 @@ export default function CreateWebinarForm() {
     watch,
     setValue,
   } = useForm<CreateWebinarFormData>({
-    resolver: zodResolver(createWebinarFormSchema),
+    resolver: zodResolver(CreateWebinarSchema),
     defaultValues: {
       title: '',
       subtitle: '',
       description: '',
       coverImage: '',
-      date: '',
-      time: '',
+      // date: '', // Removed, replaced by dateTime
+      // time: '', // Removed, replaced by dateTime
+      dateTime: new Date(), // Default to now, or null if preferred and handled
       durationMinutes: 60,
       platform: '',
       facilitators: [],
+      learningObjectives: [],
+      targetAudience: [],
+      whyAttendReasons: [],
       isFree: false,
       price: 0,
-      attendeeLimit: null,
+      attendeeLimit: undefined,
       registrationOpen: true,
       published: false,
       category: '',
@@ -79,14 +52,29 @@ export default function CreateWebinarForm() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: facilitatorFields, append: appendFacilitator, remove: removeFacilitator } = useFieldArray({
     control,
     name: "facilitators",
   });
 
+  const { fields: learningObjectiveFields, append: appendLearningObjective, remove: removeLearningObjective } = useFieldArray({
+    control,
+    name: "learningObjectives",
+  });
+
+  const { fields: targetAudienceFields, append: appendTargetAudience, remove: removeTargetAudience } = useFieldArray({
+    control,
+    name: "targetAudience",
+  });
+
+  const { fields: whyAttendReasonFields, append: appendWhyAttendReason, remove: removeWhyAttendReason } = useFieldArray({
+    control,
+    name: "whyAttendReasons",
+  });
+
   const isFreeWatched = watch("isFree");
 
-  const onSubmit = async (data: CreateWebinarFormData) => {
+  const onSubmit = async (data: CreateWebinarFormData) => { // Keeping CreateWebinarFormData for now, as it should be compatible. The defaultValues were the primary issue.
     setIsSubmitting(true);
     Swal.fire({
       title: 'Creating Webinar...', 
@@ -96,19 +84,18 @@ export default function CreateWebinarForm() {
         Swal.showLoading();
       }
     });
-
-    const dateTime = `${data.date}T${data.time}:00`; // Assuming local time, adjust if UTC needed
     
+    // dateTime is now directly from the form as a Date object due to z.coerce.date
     const payload = {
       ...data,
-      dateTime,
       price: data.isFree ? null : data.price,
-      // Tags might need to be split into an array if your backend expects that
-      // For now, sending as string as per schema
+      // Ensure facilitators, learningObjectives, targetAudience, whyAttendReasons are sent even if empty arrays
+      // Zod default([]) should handle this, but good to be mindful for API contract
+      facilitators: data.facilitators || [],
+      learningObjectives: data.learningObjectives || [],
+      targetAudience: data.targetAudience || [],
+      whyAttendReasons: data.whyAttendReasons || [],
     };
-    // Remove date and time from payload as they are combined into dateTime
-    delete (payload as any).date;
-    delete (payload as any).time;
 
     try {
       const response = await fetch('/api/webinars', {
@@ -145,29 +132,56 @@ export default function CreateWebinarForm() {
   };
 
   // Basic input field component for brevity
-  const InputField = ({ name, label, type = 'text', required = false, ...props }: any) => (
+  // Helper component props interfaces
+  interface HelperFieldProps {
+    name: FieldPath<CreateWebinarFormData>;
+    label: string;
+    required?: boolean;
+  }
+
+  interface HelperInputFieldProps extends HelperFieldProps {
+    type?: string;
+    placeholder?: string;
+    [key: string]: any; // Allow other standard input props
+  }
+
+  const InputField: React.FC<HelperInputFieldProps> = ({ name, label, type = 'text', required = false, ...props }) => {
+    const errorForField = get(errors, name);
+    return (
     <div className="mb-4">
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500">*</span>}</label>
-      <input id={name} type={type} {...register(name)} {...props} className={`mt-1 block w-full px-3 py-2 border ${errors[name] ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`} />
-      {errors[name] && <p className="mt-1 text-xs text-red-600">{errors[name]?.message?.toString()}</p>}
+      <input id={name} type={type} {...register(name)} {...props} className={`mt-1 block w-full px-3 py-2 border ${errorForField ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`} />
+      {errorForField && <p className="mt-1 text-xs text-red-600">{errorForField.message?.toString()}</p>}
     </div>
-  );
+  );};
 
-  const TextAreaField = ({ name, label, required = false, ...props }: any) => (
+  interface HelperTextAreaFieldProps extends HelperFieldProps {
+    placeholder?: string;
+    [key: string]: any;
+  }
+
+  const TextAreaField: React.FC<HelperTextAreaFieldProps> = ({ name, label, required = false, ...props }) => {
+    const errorForField = get(errors, name);
+    return (
     <div className="mb-4">
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500">*</span>}</label>
-      <textarea id={name} {...register(name)} {...props} rows={4} className={`mt-1 block w-full px-3 py-2 border ${errors[name] ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`} />
-      {errors[name] && <p className="mt-1 text-xs text-red-600">{errors[name]?.message?.toString()}</p>}
+      <textarea id={name} {...register(name)} {...props} rows={4} className={`mt-1 block w-full px-3 py-2 border ${errorForField ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`} />
+      {errorForField && <p className="mt-1 text-xs text-red-600">{errorForField.message?.toString()}</p>}
     </div>
-  );
+  );};
 
-  const CheckboxField = ({ name, label, ...props }: any) => (
+  interface HelperCheckboxFieldProps extends HelperFieldProps {
+    [key: string]: any;
+  }
+  const CheckboxField: React.FC<HelperCheckboxFieldProps> = ({ name, label, ...props }) => {
+    const errorForField = get(errors, name);
+    return (
     <div className="mb-4 flex items-center">
       <input id={name} type="checkbox" {...register(name)} {...props} className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
       <label htmlFor={name} className="ml-2 block text-sm text-gray-900">{label}</label>
-      {errors[name] && <p className="ml-2 text-xs text-red-600">{errors[name]?.message?.toString()}</p>}
+      {errorForField && <p className="ml-2 text-xs text-red-600">{errorForField.message?.toString()}</p>}
     </div>
-  );
+  );};
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 bg-white p-6 md:p-8 shadow-xl rounded-xl">
@@ -177,11 +191,41 @@ export default function CreateWebinarForm() {
       </div>
 
       <TextAreaField name="description" label="Description (Optional)" placeholder="Detailed information about the webinar..." />
-      <InputField name="coverImage" label="Cover Image URL (Optional)" type="url" placeholder="https://example.com/image.png" />
+      
+      {/* Cover Image Upload */}
+      <Controller
+        name="coverImage"
+        control={control}
+        render={({ field, fieldState: { error } }) => (
+          <div>
+            <CloudinaryUploadWidget
+              label="Cover Image (Banner)"
+              initialValue={field.value || ''}
+              onUploadSuccess={(result) => {
+                setValue('coverImage', result.url, { shouldValidate: true, shouldDirty: true });
+              }}
+              onClear={() => {
+                setValue('coverImage', '', { shouldValidate: true, shouldDirty: true });
+              }}
+              onUploadError={(uploadError) => {
+                console.error('Cover image upload error:', uploadError);
+                // Optionally, set a form error for coverImage if the Zod schema doesn't catch it
+                // setError('coverImage', { type: 'manual', message: 'Upload failed' }); 
+              }}
+              folder="webinar_banners"
+              resourceType="image" // Explicitly set to image for banners
+              buttonText="Upload Banner Image"
+              clearable={true}
+            />
+            {error && <p className="mt-1 text-xs text-red-600">{error.message}</p>}
+            {/* Display the URL as a hidden input or text for debugging if needed */}
+            {/* {field.value && <p className="mt-1 text-xs text-gray-500">URL: {field.value}</p>} */}
+          </div>
+        )}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <InputField name="date" label="Date" type="date" required />
-        <InputField name="time" label="Time" type="time" required />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <InputField name="dateTime" label="Webinar Date and Time" type="datetime-local" required />
         <InputField name="durationMinutes" label="Duration (Minutes)" type="number" required placeholder="e.g., 60" />
       </div>
 
@@ -189,25 +233,90 @@ export default function CreateWebinarForm() {
       
       <div>
         <h3 className="text-lg font-medium text-gray-800 mb-3">Facilitators</h3>
-        {fields.map((item, index) => (
+        {facilitatorFields.map((item, index) => (
           <div key={item.id} className="p-4 border border-gray-200 rounded-md mb-4 space-y-3 relative bg-gray-50">
             <InputField name={`facilitators.${index}.name`} label={`Facilitator ${index + 1} Name`} required placeholder="John Doe" />
             <InputField name={`facilitators.${index}.title`} label="Title/Role (Optional)" placeholder="Lead Developer" />
             <TextAreaField name={`facilitators.${index}.bio`} label="Short Bio (Optional)" placeholder="Brief introduction..." rows={2} />
             <InputField name={`facilitators.${index}.imageUrl`} label="Image URL (Optional)" type="url" placeholder="https://example.com/facilitator.png" />
-            <button type="button" onClick={() => remove(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
+            <button type="button" onClick={() => removeFacilitator(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
               <XCircle size={20} />
             </button>
           </div>
         ))}
         <button
           type="button"
-          onClick={() => append({ name: '', title: '', bio: '', imageUrl: '' })}
+          onClick={() => appendFacilitator({ name: '', title: '', bio: '', imageUrl: '' })}
           className="mt-2 flex items-center px-4 py-2 border border-dashed border-gray-400 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
           <PlusCircle size={18} className="mr-2" /> Add Facilitator
         </button>
         {errors.facilitators && <p className="mt-1 text-xs text-red-600">{errors.facilitators.message || errors.facilitators.root?.message}</p>}
+      </div>
+
+      {/* Learning Objectives Section */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-800 mb-3">What Attendees Will Learn (Learning Objectives)</h3>
+        {learningObjectiveFields.map((item, index) => (
+          <div key={item.id} className="p-4 border border-gray-200 rounded-md mb-4 space-y-3 relative bg-gray-50">
+            <InputField name={`learningObjectives.${index}.title`} label={`Objective ${index + 1} Title`} required placeholder="e.g., Understand core concepts" />
+            <TextAreaField name={`learningObjectives.${index}.content`} label={`Objective ${index + 1} Content`} required placeholder="Detailed explanation of what will be learned" rows={2} />
+            <button type="button" onClick={() => removeLearningObjective(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
+              <XCircle size={20} />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => appendLearningObjective({ title: '', content: '' })}
+          className="mt-2 flex items-center px-4 py-2 border border-dashed border-gray-400 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <PlusCircle size={18} className="mr-2" /> Add Learning Objective
+        </button>
+        {errors.learningObjectives && <p className="mt-1 text-xs text-red-600">{errors.learningObjectives.message || errors.learningObjectives.root?.message}</p>}
+      </div>
+
+      {/* Target Audience Section */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-800 mb-3">Who Should Attend (Target Audience)</h3>
+        {targetAudienceFields.map((item, index) => (
+          <div key={item.id} className="p-4 border border-gray-200 rounded-md mb-4 space-y-3 relative bg-gray-50">
+            <InputField name={`targetAudience.${index}.title`} label={`Audience Group ${index + 1} Title`} required placeholder="e.g., Aspiring Developers" />
+            <TextAreaField name={`targetAudience.${index}.description`} label={`Audience Group ${index + 1} Description`} required placeholder="Description of this target group" rows={2} />
+            <button type="button" onClick={() => removeTargetAudience(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
+              <XCircle size={20} />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => appendTargetAudience({ title: '', description: '' })}
+          className="mt-2 flex items-center px-4 py-2 border border-dashed border-gray-400 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <PlusCircle size={18} className="mr-2" /> Add Target Audience Group
+        </button>
+        {errors.targetAudience && <p className="mt-1 text-xs text-red-600">{errors.targetAudience.message || errors.targetAudience.root?.message}</p>}
+      </div>
+
+      {/* Why Attend Reasons Section */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-800 mb-3">Key Reasons to Attend</h3>
+        {whyAttendReasonFields.map((item, index) => (
+          <div key={item.id} className="p-4 border border-gray-200 rounded-md mb-4 space-y-3 relative bg-gray-50">
+            <InputField name={`whyAttendReasons.${index}.text`} label={`Reason ${index + 1}`} required placeholder="e.g., Gain practical skills" />
+            <button type="button" onClick={() => removeWhyAttendReason(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
+              <XCircle size={20} />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => appendWhyAttendReason({ text: '' })}
+          className="mt-2 flex items-center px-4 py-2 border border-dashed border-gray-400 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <PlusCircle size={18} className="mr-2" /> Add Reason to Attend
+        </button>
+        {errors.whyAttendReasons && <p className="mt-1 text-xs text-red-600">{errors.whyAttendReasons.message || errors.whyAttendReasons.root?.message}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">

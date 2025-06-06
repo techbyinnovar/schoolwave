@@ -1,6 +1,6 @@
 import { sendMail } from "@/utils/mailer";
 import { sendWhatsAppMessage } from '@/utils/whatsapp';
-import { prisma } from '@/prisma/client';
+import { db as prisma } from '@/lib/db';
 
 /**
  * Send template-based email and WhatsApp message to a lead, including handling inline images and attachments from DB.

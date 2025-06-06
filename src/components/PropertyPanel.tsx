@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
-import { Element } from '../types/email';
+import { Element } from '../../types/email';
 
 interface PropertyPanelProps {
   element: Element | { type: 'column', row: Element, colIdx: number };

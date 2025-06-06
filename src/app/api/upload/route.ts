@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 
-import { prisma } from '@/prisma/client';
+import { db as prisma } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from "@/prisma/client";
+import { db as prisma } from "@/lib/db";
 
 
 // POST /api/lead/[id]/action - log an action for a lead

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '../../../auth';
 import { prisma } from '../../../../prisma/client';
-import { Role, Webinar } from '@prisma/client';
+// import { Role, Webinar } from '@prisma/client';
+// Define allowed roles as a plain string array
+const allowedRoles = ['ADMIN', 'CONTENT_ADMIN'];
+
 import { z } from 'zod';
 import slugify from 'slugify';
 
@@ -42,7 +45,6 @@ const createWebinarSchema = z.object({
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  const allowedRoles: Role[] = [Role.ADMIN, Role.CONTENT_ADMIN];
   if (!session || !session.user || !allowedRoles.includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -66,14 +68,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'A webinar with this title (slug) already exists. Please choose a different title.' }, { status: 409 });
     }
 
-    const webinarData: Omit<Webinar, 'id' | 'createdAt' | 'updatedAt' | 'authorId'> & { authorId: string } = {
+    // Explicit type for webinarData to avoid Prisma type dependency
+    const webinarData = {
       ...restData,
       title,
       slug,
       published,
       publishedAt: published ? new Date() : null,
       authorId: session.user.id,
-      price: restData.isFree ? null : restData.price,
+      price: restData.isFree ? null : (restData.price ?? null),
       facilitators: restData.facilitators || [], // Ensure facilitators is an array
     };
 

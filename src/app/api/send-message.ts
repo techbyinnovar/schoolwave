@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/prisma/client';
+import { db as prisma } from '@/lib/db';
 import { getToken } from 'next-auth/jwt';
 import { sendTemplateToLead } from './lead/sendTemplateToLead';
-import type { MessageTemplate } from '@/types/messageTemplate';
+import type { MessageTemplate } from 'types/messageTemplate';
 
 export async function POST(req: NextRequest) {
   try {

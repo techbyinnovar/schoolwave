@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/prisma/client';
+import { db as prisma } from '@/lib/db';
 import { auth } from '@/auth';
 
 // Helper function to generate a slug (consistent with the other route file)

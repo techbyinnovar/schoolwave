@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import EditBlogForm from '@/src/components/admin/blogs/EditBlogForm';
+import EditBlogForm from '@/components/admin/blogs/EditBlogForm';
 import Link from 'next/link';
 
 interface EditBlogPostPageProps {

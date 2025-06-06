@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import CreateBlogForm from '@/src/components/admin/blogs/CreateBlogForm';
+import CreateBlogForm from '@/components/admin/blogs/CreateBlogForm';
 import Link from 'next/link';
 
 export default async function NewBlogPostPage() {

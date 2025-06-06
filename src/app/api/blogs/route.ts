@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/prisma/client'; // Updated to use path alias
+import { db as prisma } from '@/lib/db'; // Updated to use path alias
 import { auth } from '@/auth'; // Updated to use path alias (assuming auth.ts is at project root)
 
 // Helper function to generate a slug
