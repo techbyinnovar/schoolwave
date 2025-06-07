@@ -1,4 +1,4 @@
-import { Element, ElementType } from '../types/email';
+import { Element, ElementType } from '../../types/email';
 
 // Utility to parse inline CSS string to object
 function parseStyleString(style: string): Record<string, string> {
