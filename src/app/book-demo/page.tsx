@@ -103,7 +103,7 @@ export default function BookDemoPage() {
           <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-lg">
             <h2 className="text-2xl font-bold mb-4">Book a Demo</h2>
             {error && <div className="text-red-600 mb-2">{error}</div>}
-            {success && <div className="text-green-600 mb-2">Demo booked successfully!</div>}
+            {success && <div className="text-green-600 mb-2">Demo booked successfully !!!</div>}
             {step === 1 && (
               <form onSubmit={handleStep1} className="flex flex-col gap-3">
                 <input required name="schoolName" value={form.schoolName} onChange={handleChange} className="border px-2 py-1 rounded" placeholder="School Name" />
