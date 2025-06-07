@@ -39,7 +39,7 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-white rounded shadow p-6 flex flex-col items-center">
               <div className="text-2xl font-bold text-green-600">{stats.contentAdmins}</div>
-              <div className="text-gray-600">Content Admins</div>
+              <div className="text-gray-600">Content Admin</div>
             </div>
             <div className="bg-white rounded shadow p-6 flex flex-col items-center">
               <div className="text-2xl font-bold text-purple-600">{stats.agents}</div>
