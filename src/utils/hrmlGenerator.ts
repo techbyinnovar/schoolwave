@@ -1,4 +1,4 @@
-import { Element } from '../types/email';
+import { Element } from '../../types/email';
 
 export const generateHTML = (elements: Element[]): string => {
   if (elements.length === 0) {

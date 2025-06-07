@@ -104,7 +104,7 @@ const CloudinaryUploadWidget: React.FC<CloudinaryUploadWidgetProps> = ({
           multiple: false,
           maxFiles: 1,
           folder: folder,
-          resource_type: resourceType,
+          resourceType: resourceType,
         }}
         onSuccess={handleSuccess}
         onError={handleError}
