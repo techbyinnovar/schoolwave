@@ -44,6 +44,7 @@
     "github-slugger": "^2.0.0",
     "html-react-parser": "^5.2.2",
     "immutable": "^4.3.5",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.510.0",
     "mailtrap": "^4.1.0",
     "marked": "^9.1.6",
