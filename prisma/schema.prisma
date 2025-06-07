@@ -37,7 +37,9 @@ model Webinar {
   facilitators    Json?     // JSON field for a list of facilitators: [{ name: "John Doe", title: "Expert", bio: "...", imageUrl: "..." }]
   learningObjectives Json?    // Array of objects: e.g., [{ title: "Objective Title 1", content: "Details..." }]
   targetAudience     Json?    // Array of objects: e.g., [{ title: "School Owners", description: "..."}]
-  whyAttendReasons   Json?    // Array of strings: e.g., ["Reason 1", "Reason 2"]
+  whyAttendReasons   Json?    // Array of objects: e.g., [{ title: "Reason Title 1", description: "Reason Description 1" }]
+  whyAttendParagraph String?  @db.Text // Main paragraph for the 'Why Attend' section
+  whyAttendHighlight String?  // Final highlight point for the 'Why Attend' section
 
   isFree          Boolean   @default(true)
   price           Float?    // Only relevant if isFree is false

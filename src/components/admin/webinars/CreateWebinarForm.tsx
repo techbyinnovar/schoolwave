@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import { useForm, useFieldArray, Controller, FieldPath } from 'react-hook-form';
 import get from 'lodash/get';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +27,7 @@ export default function CreateWebinarForm() {
     formState: { errors, isDirty, isValid },
     watch,
     setValue,
+    setError, // Added setError
   } = useForm<CreateWebinarFormData>({
     resolver: zodResolver(CreateWebinarSchema),
     defaultValues: {
@@ -238,7 +240,38 @@ export default function CreateWebinarForm() {
             <InputField name={`facilitators.${index}.name`} label={`Facilitator ${index + 1} Name`} required placeholder="John Doe" />
             <InputField name={`facilitators.${index}.title`} label="Title/Role (Optional)" placeholder="Lead Developer" />
             <TextAreaField name={`facilitators.${index}.bio`} label="Short Bio (Optional)" placeholder="Brief introduction..." rows={2} />
-            <InputField name={`facilitators.${index}.imageUrl`} label="Image URL (Optional)" type="url" placeholder="https://example.com/facilitator.png" />
+            <Controller
+              name={`facilitators.${index}.imageUrl` as FieldPath<CreateWebinarFormData>}
+              control={control}
+              render={({ field, fieldState: { error: fieldError } }) => (
+                <div>
+                  <CloudinaryUploadWidget
+                    label={`Facilitator ${index + 1} Image (Optional)`}
+                    initialValue={typeof field.value === 'string' ? field.value : ''}
+                    onUploadSuccess={(uploadResult) => {
+                      setValue(`facilitators.${index}.imageUrl`, uploadResult.url, { shouldValidate: true, shouldDirty: true });
+                    }}
+                    onClear={() => {
+                      setValue(`facilitators.${index}.imageUrl`, '', { shouldValidate: true, shouldDirty: true });
+                    }}
+                    onUploadError={(uploadError) => {
+                      console.error(`Facilitator ${index + 1} image upload error:`, uploadError);
+                      setError(`facilitators.${index}.imageUrl` as FieldPath<CreateWebinarFormData>, { type: 'manual', message: 'Upload failed. Please try again.' });
+                    }}
+                    folder="webinar_facilitators"
+                    resourceType="image"
+                    buttonText="Upload Image"
+                    clearable={true}
+                  />
+                  {field.value && (
+                    <div className="mt-2">
+                      <Image src={typeof field.value === 'string' ? field.value : ''} alt={`Facilitator ${index + 1} Preview`} width={96} height={96} className="object-cover rounded-md shadow-sm" />
+                    </div>
+                  )}
+                  {fieldError && <p className="mt-1 text-xs text-red-600">{fieldError.message}</p>}
+                </div>
+              )}
+            />
             <button type="button" onClick={() => removeFacilitator(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
               <XCircle size={20} />
             </button>
@@ -298,12 +331,41 @@ export default function CreateWebinarForm() {
         {errors.targetAudience && <p className="mt-1 text-xs text-red-600">{errors.targetAudience.message || errors.targetAudience.root?.message}</p>}
       </div>
 
-      {/* Why Attend Reasons Section */}
+      {/* "Why You Shouldn't Miss This" Section Content */}
       <div>
-        <h3 className="text-lg font-medium text-gray-800 mb-3">Key Reasons to Attend</h3>
+        <h3 className="text-lg font-medium text-gray-800 mb-3">&quot;Why You Shouldn&apos;t Miss This&quot; Section Content</h3>
+        
+        <TextAreaField 
+          name="whyAttendParagraph" 
+          label="Main Paragraph for 'Why Attend' Section (Optional)" 
+          placeholder="Enter the main descriptive paragraph... (e.g., Unpaid fees are a growing crisis...)" 
+          rows={4} 
+        />
+        {get(errors, 'whyAttendParagraph') && <p className="mt-1 text-xs text-red-600">{get(errors, 'whyAttendParagraph')?.message?.toString()}</p>}
+
+        <InputField 
+          name="whyAttendHighlight" 
+          label="Final Highlight Point for 'Why Attend' Section (Optional)" 
+          placeholder="Enter the final highlight text... (e.g., 🎓 Don't miss this free opportunity...)" 
+        />
+        {get(errors, 'whyAttendHighlight') && <p className="mt-1 text-xs text-red-600">{get(errors, 'whyAttendHighlight')?.message?.toString()}</p>}
+
+        <h4 className="text-md font-medium text-gray-700 mt-6 mb-3">Detailed Reasons (e.g., &quot;You&apos;ll walk away with:&quot;) (Optional)</h4>
         {whyAttendReasonFields.map((item, index) => (
           <div key={item.id} className="p-4 border border-gray-200 rounded-md mb-4 space-y-3 relative bg-gray-50">
-            <InputField name={`whyAttendReasons.${index}.text`} label={`Reason ${index + 1}`} required placeholder="e.g., Gain practical skills" />
+            <InputField 
+              name={`whyAttendReasons.${index}.title`}
+              label={`Reason ${index + 1} Title`} 
+              required 
+              placeholder="e.g., Actionable Strategies"
+            />
+            <TextAreaField 
+              name={`whyAttendReasons.${index}.description`}
+              label={`Reason ${index + 1} Description`} 
+              required 
+              placeholder="e.g., Learn X, Y, and Z to improve..." 
+              rows={2}
+            />
             <button type="button" onClick={() => removeWhyAttendReason(index)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
               <XCircle size={20} />
             </button>
@@ -311,12 +373,12 @@ export default function CreateWebinarForm() {
         ))}
         <button
           type="button"
-          onClick={() => appendWhyAttendReason({ text: '' })}
+          onClick={() => appendWhyAttendReason({ title: '', description: '' })}
           className="mt-2 flex items-center px-4 py-2 border border-dashed border-gray-400 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors"
         >
-          <PlusCircle size={18} className="mr-2" /> Add Reason to Attend
+          <PlusCircle size={18} className="mr-2" /> Add Detailed Reason
         </button>
-        {errors.whyAttendReasons && <p className="mt-1 text-xs text-red-600">{errors.whyAttendReasons.message || errors.whyAttendReasons.root?.message}</p>}
+        {get(errors, 'whyAttendReasons') && <p className="mt-1 text-xs text-red-600">{get(errors, 'whyAttendReasons')?.message?.toString() || get(errors, 'whyAttendReasons')?.root?.message?.toString()}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">

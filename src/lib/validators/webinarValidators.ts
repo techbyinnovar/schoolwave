@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
 // Schema for a single Facilitator
+// Schema for a single Why Attend Reason (matches display component)
+export const WhyAttendReasonSchema = z.object({
+  title: z.string().min(1, 'Reason title is required'),
+  description: z.string().min(1, 'Reason description is required'),
+});
+
+// Schema for a single Facilitator
 export const FacilitatorSchema = z.object({
   name: z.string().min(1, 'Facilitator name is required'),
   title: z.string().min(1, 'Facilitator title is required'),
@@ -39,7 +46,9 @@ export const CreateWebinarSchema = z.object({
   facilitators: z.array(FacilitatorSchema).optional(),
   learningObjectives: z.array(LearningObjectiveSchema).optional(),
   targetAudience: z.array(TargetAudienceItemSchema).optional(),
-  whyAttendReasons: z.array(z.object({ text: z.string().min(1, 'Reason text cannot be empty') })).optional(),
+  whyAttendReasons: z.array(WhyAttendReasonSchema).optional(),
+  whyAttendParagraph: z.string().optional(),
+  whyAttendHighlight: z.string().optional(),
 
   isFree: z.boolean().default(true),
   price: z.coerce.number().positive('Price must be a positive number').optional(),

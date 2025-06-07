@@ -9,9 +9,11 @@ interface WhyAttendProps {
   openRegistrationForm: () => void;
   title: string;
   reasons: Reason[];
+  whyAttendParagraph?: string;
+  whyAttendHighlight?: string;
 }
 
-const WhyAttend: React.FC<WhyAttendProps> = ({ openRegistrationForm, title, reasons }) => {
+const WhyAttend: React.FC<WhyAttendProps> = ({ openRegistrationForm, title, reasons, whyAttendParagraph, whyAttendHighlight }) => {
   return (
     <section className="py-16 px-6 md:px-12 bg-white">
       <div className="max-w-5xl mx-auto">
@@ -26,9 +28,11 @@ const WhyAttend: React.FC<WhyAttendProps> = ({ openRegistrationForm, title, reas
             </div>
             <div className="md:col-span-3 p-8 md:p-12">
               <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">{title}</h2>
-              <p className="text-teal-100 text-lg mb-6">
-                Unpaid fees are a growing crisis in Nigerian schools, but it doesn&apos;t have to be your school&apos;s story. Join this power-packed session and leave with strategies you can start using immediately.
-              </p>
+              {whyAttendParagraph && (
+                <p className="text-teal-100 text-lg mb-6">
+                  {whyAttendParagraph}
+                </p>
+              )}
               
               {reasons && reasons.length > 0 && (
                 <div className="bg-blue-800/50 rounded-lg p-6 mb-6 backdrop-blur-sm border border-blue-700">
@@ -45,7 +49,9 @@ const WhyAttend: React.FC<WhyAttendProps> = ({ openRegistrationForm, title, reas
               )}
               
               <div className="text-center">
-                <h3 className="text-white text-xl font-semibold mb-4">🎓 Don&apos;t miss this free opportunity to save your school from financial stress.</h3>
+                {whyAttendHighlight && (
+                  <h3 className="text-white text-xl font-semibold mb-4">{whyAttendHighlight}</h3>
+                )}
                 <button 
                   onClick={openRegistrationForm}
                   className="bg-teal-500 hover:bg-teal-600 text-blue-950 font-bold py-4 px-8 rounded-lg shadow-lg transform transition duration-300 hover:scale-105 w-full"

@@ -73,7 +73,7 @@ export default async function WebinarPage({ params }: Props) {
   return (
     <div className='bg-white min-h-screen'>
       <div className='bg-[#00164E] mb-6 sticky top-0 z-50'>
-        <Header />
+
       </div>
 
       <div className='container mx-auto px-4 sm:px-6 lg:px-8 py-12'>

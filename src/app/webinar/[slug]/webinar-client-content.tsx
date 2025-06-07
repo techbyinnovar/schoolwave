@@ -47,6 +47,8 @@ export type ClientWebinarData = Webinar & {
   whatYouWillLearnDescription?: string | null;
   whoShouldAttendTitle?: string | null;
   whyAttendTitle?: string | null;
+  whyAttendParagraph?: string | null;
+  whyAttendHighlight?: string | null;
   language?: string | null; // Added for WebinarDetailsComponent
 };
 
@@ -112,10 +114,12 @@ const WebinarClientContent: React.FC<WebinarClientContentProps> = ({ webinar }) 
           description={webinar.whatYouWillLearnDescription || webinar.description || ""} // Fallback to main description or empty
           learningPoints={parsedLearningPoints}
         />
-        <WhoShouldAttend
-          title={webinar.whoShouldAttendTitle || "Who Should Attend?"}
-          targetAudience={parsedTargetAudience}
-        />
+        {parsedTargetAudience && parsedTargetAudience.length > 0 && (
+          <WhoShouldAttend
+            title={webinar.whoShouldAttendTitle || "Who Should Attend?"}
+            targetAudience={parsedTargetAudience}
+          />
+        )}
         <WebinarDetailsComponent
           openRegistrationForm={openRegistrationForm}
           facilitators={parsedFacilitators}
@@ -130,9 +134,10 @@ const WebinarClientContent: React.FC<WebinarClientContentProps> = ({ webinar }) 
           openRegistrationForm={openRegistrationForm}
           title={webinar.whyAttendTitle || "Why You Shouldn't Miss This"}
           reasons={parsedWhyAttendReasons}
+          whyAttendParagraph={webinar.whyAttendParagraph || undefined}
+          whyAttendHighlight={webinar.whyAttendHighlight || undefined}
         />
       </main>
-      <Footer />
       <RegistrationForm
         isOpen={showRegistrationForm}
         onClose={closeRegistrationForm}

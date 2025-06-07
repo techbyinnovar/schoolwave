@@ -94,9 +94,9 @@ const WebinarDetails: React.FC<WebinarDetailsProps> = ({
               <Users className="h-10 w-10 text-teal-400 mb-2 inline-block" />
               <h2 className="text-3xl font-bold">Meet Your Facilitators</h2>
             </div>
-            <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="flex flex-wrap justify-center gap-8">
               {facilitators.map((facilitator, index) => (
-                <div key={index} className="bg-blue-900/50 rounded-xl p-6 backdrop-blur-sm border border-blue-800 flex flex-col items-center text-center">
+                <div key={index} className="w-full max-w-sm bg-blue-900/50 rounded-xl p-6 backdrop-blur-sm border border-blue-800 flex flex-col items-center text-center">
                   <div className="relative h-32 w-32 rounded-full overflow-hidden mb-4 border-2 border-teal-400">
                     <Image 
                       src={facilitator.imageUrl || '/default-avatar.png'} // Provide a fallback avatar

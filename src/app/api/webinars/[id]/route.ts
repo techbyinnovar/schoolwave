@@ -19,20 +19,33 @@ const WebinarUpdateSchema = z.object({
   durationMinutes: z.number().int().positive().optional(),
   platform: z.string().optional(),
   facilitators: z.array(z.object({
-    name: z.string(),
+    name: z.string().min(1, 'Facilitator name is required'),
     title: z.string().optional(),
     bio: z.string().optional(),
-    imageUrl: z.string().url().optional(),
-  })).optional().nullable(), // Allow null to clear facilitators
+    imageUrl: z.string().url().optional().or(z.literal('')), // Allow empty string for clearing
+  })).optional().nullable(),
+  learningObjectives: z.array(z.object({
+    title: z.string().min(1, 'Objective title is required'),
+    content: z.string().min(1, 'Objective content is required'),
+  })).optional().nullable(),
+  targetAudience: z.array(z.object({
+    title: z.string().min(1, 'Audience title is required'),
+    description: z.string().min(1, 'Audience description is required'),
+  })).optional().nullable(),
+  whyAttendReasons: z.array(z.object({
+    title: z.string().min(1, 'Reason title is required'),
+    description: z.string().min(1, 'Reason description is required'),
+  })).optional().nullable(),
+  whyAttendParagraph: z.string().optional().nullable(), // New field
+  whyAttendHighlight: z.string().optional().nullable(), // New field
   isFree: z.boolean().optional(),
-  price: z.number().optional().nullable(), // Allow null
-  attendeeLimit: z.number().int().positive().optional().nullable(), // Allow null
+  price: z.number().optional().nullable(),
+  attendeeLimit: z.number().int().positive().optional().nullable(),
   registrationOpen: z.boolean().optional(),
   published: z.boolean().optional(),
-  // publishedAt is handled by published flag
-  category: z.string().optional().nullable(), // Allow null
-  tags: z.string().optional().nullable(), // Allow null
-  slug: z.string().optional(), // Allow slug updates
+  category: z.string().optional().nullable(),
+  tags: z.string().optional().nullable(),
+  slug: z.string().optional(),
 });
 
 // Slugify function
