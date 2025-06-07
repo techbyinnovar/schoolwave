@@ -169,7 +169,7 @@ export default function EditWebinarForm({ webinar }: EditWebinarFormProps) {
     // Ensure dateTime is a Date object if it's coming from a datetime-local input as string
     const processedData = {
         ...data,
-        dateTime: data.dateTime ? new Date(data.dateTime) : undefined,
+        dateTime: data.dateTime ? (typeof data.dateTime === 'string' ? data.dateTime : new Date(data.dateTime).toISOString()) : undefined,
         price: data.isFree ? null : data.price,
         // Ensure array fields are included, defaulting to empty arrays if undefined
         facilitators: data.facilitators || [],
