@@ -297,3 +297,19 @@ model Term {
   @@unique([academicYearId, name])
   @@map("terms")
 }
+
+model Demo {
+  id          String    @id @default(cuid())
+  title       String
+  description String?   @db.Text
+  coverImage  String?
+  videos      Json?     // This will store an array of video objects: { url: string, title: string, description: string? }
+  priority    Int?
+  published   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // If you had a relation to a User model, you might add something like:
+  // userId      String?
+  // user        User?     @relation(fields: [userId], references: [id])
+}
