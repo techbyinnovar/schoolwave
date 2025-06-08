@@ -1,86 +1,80 @@
+"use client";
+
 import { notFound } from 'next/navigation';
-import { Metadata } from 'next';
-import { Demo } from '@prisma/client'; // Assuming Demo type is from prisma client
+// import { Metadata } from 'next'; // Metadata export is for server components/pages
+import { Demo } from '@prisma/client';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import DemoDetailClient from '@/components/demo/DemoDetailClient';
+import withDemoAuth from '@/components/auth/withDemoAuth';
 
 interface DemoVideo {
   url: string;
   title: string;
   description?: string | null;
 }
-
 interface DemoWithParsedVideos extends Omit<Demo, 'videos'> {
   videos: DemoVideo[] | null;
 }
 
-// Ensure fresh data on each request
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
-
+// This function is called client-side within useEffect
 async function fetchDemoFromApi(id: string): Promise<DemoWithParsedVideos | null> {
   const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const apiUrl = `${baseURL}/api/demos/${id}`;
-  
-  console.log(`[DEMO_DETAIL_PAGE_LOG] Fetching demo ${id} from: ${apiUrl}`);
+  // console.log(`[DEMO_DETAIL_PAGE_LOG] Fetching demo ${id} from: ${apiUrl}`);
 
   try {
     const response = await fetch(apiUrl, {
-      cache: 'no-store', // Ensure fresh data
+      cache: 'no-store',
     });
 
     if (!response.ok) {
       if (response.status === 404) {
-        console.log(`[DEMO_DETAIL_PAGE_LOG] Demo not found (API 404) for id: ${id}`);
-        return null; // Will trigger notFound() in the page component
+        // console.log(`[DEMO_DETAIL_PAGE_LOG] Demo not found (API 404) for id: ${id}`);
+        return null; 
       }
-      // For other errors, throw to be caught by the page component's error handling
       const errorText = await response.text();
-      console.error(`[DEMO_DETAIL_PAGE_ERROR] API error fetching demo ${id}. Status: ${response.status}. Body: ${errorText}`);
+      console.error(`[DEMO_DETAIL_PAGE_ERROR] API error. Status: ${response.status}. URL: ${apiUrl}. Body: ${errorText}`);
       throw new Error(`Failed to fetch demo. Status: ${response.status}`);
     }
 
     const demoData = await response.json() as Demo;
 
-    // Parse videos (assuming it's a JSON string from the API)
     let parsedVideos: DemoVideo[] | null = null;
     if (demoData.videos && typeof demoData.videos === 'string') {
       try {
         parsedVideos = JSON.parse(demoData.videos);
       } catch (e) {
         console.error(`[DEMO_DETAIL_PAGE_ERROR] Failed to parse videos JSON for demo ${demoData.id}:`, e);
-        // Keep videos as null or handle as an error state if critical
       }
     } else if (Array.isArray(demoData.videos)) {
-      // If API already returns parsed videos (e.g., if Prisma JSON protocol is 'json')
       parsedVideos = demoData.videos as unknown as DemoVideo[];
     }
 
     return { ...demoData, videos: parsedVideos };
 
   } catch (error: any) {
-    console.error(`[DEMO_DETAIL_PAGE_ERROR] Exception during fetch for demo ${id}: ${error.message}`, error);
-    // Re-throw to be caught by the page component's error handling
+    console.error(`[DEMO_DETAIL_PAGE_ERROR] Exception during fetch. URL: ${apiUrl}. Error: ${error.message}`, error);
     throw error; 
   }
 }
 
+/*
+// generateMetadata is a Next.js feature for Server Components.
+// For client components that fetch data dynamically after an auth check,
+// metadata generation needs a different approach if it depends on that fetched data.
+// For now, we will comment it out. You might set document.title in useEffect if needed,
+// or explore middleware-based auth to keep pages server-renderable for metadata.
+
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   try {
-    // Fetching here is primarily for metadata. 
-    // The page component will do its own fetch.
-    // Consider if this fetch can be optimized or if error states for metadata need to be robust.
-    const demo = await fetchDemoFromApi(params.id);
-
+    const demo = await fetchDemoFromApi(params.id); // This fetch would run server-side
     if (!demo) {
-      return {
-        title: 'Demo Not Found | Schoolwave',
-      };
+      return { title: 'Demo Not Found | Schoolwave' };
     }
-
     return {
       title: `${demo.title} | Schoolwave Demos`,
       description: demo.description || `Watch our demo: ${demo.title}`,
@@ -93,19 +87,41 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     };
   }
 }
+*/
 
-export default async function DemoDetailPage({ params }: { params: { id: string } }) {
+function DemoDetailPageContent({ params }: { params: { id: string } }) {
   const { id } = params;
-  let demo: DemoWithParsedVideos | null = null;
-  let fetchError: string | null = null;
+  const [demo, setDemo] = useState<DemoWithParsedVideos | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  try {
-    demo = await fetchDemoFromApi(id);
-  } catch (error: any) {
-    console.error(`[DEMO_DETAIL_PAGE_ERROR] Page-level error fetching demo ${id}:`, error.message);
-    fetchError = error.message || `An unexpected error occurred while loading the demo.`;
+  useEffect(() => {
+    async function loadDemo() {
+      setIsLoading(true);
+      try {
+        const fetchedDemo = await fetchDemoFromApi(id);
+        if (fetchedDemo === null) {
+          notFound(); // Trigger Next.js not found mechanism if API returns 404
+          return; 
+        }
+        setDemo(fetchedDemo);
+      } catch (error: any) {
+        setFetchError(error.message || `An unexpected error occurred while loading the demo.`);
+      }
+      setIsLoading(false);
+    }
+    loadDemo();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"></div>
+        <p className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">Loading Demo Details...</p>
+      </div>
+    );
   }
-
+  
   if (fetchError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
@@ -120,26 +136,29 @@ export default async function DemoDetailPage({ params }: { params: { id: string 
     );
   }
 
+  // If !isLoading, !fetchError, and demo is still null, it means notFound() should have been called by useEffect.
+  // This explicit check is a fallback or for clarity.
   if (!demo) {
-    // This will be triggered if fetchDemoFromApi returned null (e.g., API 404)
-    // and no other error was caught by fetchError.
-    notFound(); 
+      // This state should ideally be handled by the notFound() call in useEffect, which would unmount or redirect.
+      // If this is rendered, it's a brief moment before notFound() takes full effect or an unexpected state.
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900">
+             <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">Demo not found or not available.</p>
+        </div>
+      );
   }
 
   return (
-    <div>
-      <div className='bg-[#00164E] dark:bg-gray-900 mb-6 sticky top-0 z-50 shadow-md'>
+    <div className="min-h-screen flex flex-col">
+      <div className='bg-[#00164E] dark:bg-gray-900 sticky top-0 z-50 shadow-md'>
         <Header />
       </div>
-      <main className="container mx-auto px-4 py-8">
-        {/* 
-          The w-[75%] was causing horizontal scroll on smaller screens. 
-          Using container mx-auto for better responsiveness.
-          Adjust DemoDetailClient internal styling if specific width constraints are needed.
-        */}
+      <main className="container mx-auto px-4 py-8 flex-grow">
         <DemoDetailClient demo={demo} />
       </main>
       <Footer />
     </div>
   );
 }
+
+export default withDemoAuth(DemoDetailPageContent);
