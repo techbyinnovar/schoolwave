@@ -3,6 +3,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { Demo } from '@prisma/client'; // Import the Demo type
+import Footer from '@/components/Footer';
+import Header from '@/components/Header';
 
 export const metadata: Metadata = {
   title: 'Product Demos | Schoolwave',
@@ -57,7 +59,7 @@ async function getPublishedDemos(): Promise<DemoWithParsedVideos[]> {
         // Keep videos as null or an empty array if parsing fails
       }
     } else if (Array.isArray(demo.videos)) { // Or it might already be an array of objects
-        parsedVideos = demo.videos as DemoVideo[];
+        parsedVideos = demo.videos as unknown as DemoVideo[];
     }
     return { ...demo, videos: parsedVideos };
   });
@@ -68,7 +70,10 @@ export default async function DemoListPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="container mx-auto px-4 py-12">
+      <div className='bg-[#00164E] mb-6 sticky top-0 z-50'> {/* Made header sticky */}
+             <Header />
+           </div>
+      <div className="container mx-auto px-4 py-12 w-[75%]">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
             Explore Our Demos
@@ -113,6 +118,7 @@ export default async function DemoListPage() {
           </div>
         )}
       </div>
+      <Footer/>
     </div>
   );
 }

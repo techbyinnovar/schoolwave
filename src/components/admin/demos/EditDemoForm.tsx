@@ -3,13 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, SubmitHandler, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  DemoEditFormSchema,
-  DemoEditFormData,
-  VideoFormItemSchema,
-  VideoItemData as TVideoItemData, // Renaming to avoid conflict if VideoItemSchema is also imported
-  VideoFormItemData
-} from '@/lib/schemas/demoSchemas';
+import { DemoEditFormSchema, DemoEditFormData, VideoFormItemSchema, VideoItemData, VideoFormItemData } from '@/lib/schemas/demoSchemas';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import CloudinaryUploadWidget from '@/components/shared/CloudinaryUploadWidget';
@@ -106,10 +100,10 @@ const EditDemoForm: React.FC<EditDemoFormProps> = ({ demo }) => {
       coverImage: formData.coverImage === '' ? null : formData.coverImage,
       videos: formData.videos
         ? formData.videos
-            .filter((videoItem: z.infer<typeof VideoFormItemSchema>): videoItem is z.infer<typeof TVideoItemData> => 
+            .filter((videoItem: z.infer<typeof VideoFormItemSchema>): videoItem is VideoItemData => 
               !!(videoItem.url && typeof videoItem.url === 'string' && videoItem.url.trim() !== '' && 
                  videoItem.title && typeof videoItem.title === 'string' && videoItem.title.trim() !== ''))
-            .map((filteredVideoItem: z.infer<typeof TVideoItemData>) => ({
+            .map((filteredVideoItem: VideoItemData) => ({
               url: filteredVideoItem.url,
               title: filteredVideoItem.title,
               description: filteredVideoItem.description || null,
@@ -167,9 +161,8 @@ const EditDemoForm: React.FC<EditDemoFormProps> = ({ demo }) => {
         <div className="mt-1 flex items-center space-x-2">
           <input type="text" id="coverImage" {...register('coverImage')} placeholder="Enter URL or upload" className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
           <CloudinaryUploadWidget
-            onUploadSuccess={(url) => setValue('coverImage', url, { shouldValidate: true, shouldDirty: true })}
+            onUploadSuccess={(result) => setValue('coverImage', result.url, { shouldValidate: true, shouldDirty: true })}
             buttonText="Upload"
-            folderName="demo_covers"
           />
         </div>
         {errors.coverImage && <p className="text-red-500 text-xs mt-1">{errors.coverImage.message}</p>}
@@ -195,9 +188,8 @@ const EditDemoForm: React.FC<EditDemoFormProps> = ({ demo }) => {
               <div className="mt-1 flex items-center space-x-2">
                 <input type="text" {...register(`videos.${index}.url`)} placeholder="Enter video URL or upload" className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                 <CloudinaryUploadWidget
-                  onUploadSuccess={(url) => setValue(`videos.${index}.url`, url, { shouldValidate: true, shouldDirty: true })}
+                  onUploadSuccess={(result) => setValue(`videos.${index}.url`, result.url, { shouldValidate: true, shouldDirty: true })}
                   buttonText="Upload"
-                  folderName="demo_videos"
                   resourceType="video"
                 />
               </div>
