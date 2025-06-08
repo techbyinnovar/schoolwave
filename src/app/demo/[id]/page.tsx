@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import DemoDetailClient from '@/components/demo/DemoDetailClient'; // We'll create/update this next
 import { Metadata } from 'next';
 import { Demo } from '@prisma/client';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 interface DemoVideo {
   url: string;
@@ -47,7 +49,7 @@ async function getDemo(id: string): Promise<DemoWithParsedVideos | null> {
       console.error(`Failed to parse videos JSON for demo ${demo.id}:`, e);
     }
   } else if (Array.isArray(demo.videos)) {
-    parsedVideos = demo.videos as DemoVideo[];
+    parsedVideos = demo.videos as unknown as DemoVideo[];
   }
 
   return { ...demo, videos: parsedVideos };
@@ -62,7 +64,17 @@ export default async function DemoDetailPage({ params }: { params: { id: string 
   }
 
   return (
+    <div >
+      
+     <div className='bg-[#00164E] mb-6 sticky top-0 z-50'> {/* Made header sticky */}
+            <Header />
+          </div>
+          <div className='w-[75%]'>
+
     <DemoDetailClient demo={demo} />
+          </div>
+    <Footer />
+    </div>
   );
 }
 

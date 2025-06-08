@@ -120,9 +120,8 @@ const CreateDemoForm: React.FC = () => {
         <div className="mt-1 flex items-center space-x-2">
           <input type="text" id="coverImage" {...register('coverImage')} placeholder="Enter URL or upload" className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
           <CloudinaryUploadWidget
-            onUploadSuccess={(url) => setValue('coverImage', url, { shouldValidate: true })}
+            onUploadSuccess={(result) => setValue('coverImage', result.url, { shouldValidate: true })}
             buttonText="Upload"
-            folderName="demo_covers"
           />
         </div>
         {errors.coverImage && <p className="text-red-500 text-xs mt-1">{errors.coverImage.message}</p>}
@@ -148,9 +147,8 @@ const CreateDemoForm: React.FC = () => {
               <div className="mt-1 flex items-center space-x-2">
                 <input type="text" {...register(`videos.${index}.url`)} placeholder="Enter video URL or upload" className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                 <CloudinaryUploadWidget
-                  onUploadSuccess={(url) => setValue(`videos.${index}.url`, url, { shouldValidate: true })}
+                  onUploadSuccess={(result) => setValue(`videos.${index}.url`, result.url, { shouldValidate: true })}
                   buttonText="Upload"
-                  folderName="demo_videos"
                   resourceType="video"
                 />
               </div>

@@ -56,7 +56,7 @@ const DemoListClient: React.FC = () => {
             // Keep videos as null or an empty array if parsing fails
           }
         } else if (Array.isArray(demo.videos)) {
-            parsedVideos = demo.videos as DemoVideo[]; // Assume it's already in the correct format
+            parsedVideos = demo.videos as unknown as DemoVideo[]; // Assume it's already in the correct format
         }
         return { ...demo, videos: parsedVideos };
       });
