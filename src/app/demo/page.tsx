@@ -1,4 +1,4 @@
-import { db as prisma } from '@/lib/db';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Metadata } from 'next';
@@ -21,52 +21,74 @@ interface DemoWithParsedVideos extends Omit<Demo, 'videos'> {
     videos: DemoVideo[] | null;
 }
 
-async function getPublishedDemos(): Promise<DemoWithParsedVideos[]> {
-  const demos = await prisma.demo.findMany({
-    where: {
-      published: true,
-    },
-    orderBy: [
-      {
-        priority: {
-          sort: 'asc',
-          nulls: 'last',
-        },
-      },
-      { createdAt: 'desc' },
-    ],
-    select: {
-      id: true,
-      title: true,
-      description: true, // Keep description for potential snippets, though not explicitly used in card here
-      coverImage: true,
-      videos: true, // Fetch the Json field
-      priority: true,
-      published: true,
-      createdAt: true,
-      updatedAt: true, // Keep for completeness
-    },
-  });
+async function fetchDemosFromApi(): Promise<DemoWithParsedVideos[]> {
+  let processedDemos: DemoWithParsedVideos[] = []; // Initialize to empty array
+    const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  // Fetch all published demos by setting a high limit, adjust if proper pagination is needed on this page.
+  const apiUrl = `${baseURL}/api/demos?published=true&page=1&limit=1000`; 
+  console.log(`[DEMO_PAGE_LOG] Fetching from full URL: ${apiUrl}`);
 
-  // Manually parse the videos JSON field
-  return demos.map(demo => {
-    let parsedVideos: DemoVideo[] | null = null;
-    if (demo.videos && typeof demo.videos === 'string') { // Prisma might return JSON as string
-      try {
-        parsedVideos = JSON.parse(demo.videos);
-      } catch (e) {
-        console.error(`Failed to parse videos JSON for demo ${demo.id}:`, e);
-        // Keep videos as null or an empty array if parsing fails
-      }
-    } else if (Array.isArray(demo.videos)) { // Or it might already be an array of objects
-        parsedVideos = demo.videos as unknown as DemoVideo[];
+  try {
+    const response = await fetch(apiUrl, {
+      cache: 'no-store', // Or 'force-cache' or other caching strategies as needed
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`[DEMO_PAGE_ERROR] Failed to fetch demos from ${apiUrl}. Status: ${response.status}. Response: ${errorBody}`);
+      throw new Error(`Failed to fetch demos. Status: ${response.status}`);
     }
-    return { ...demo, videos: parsedVideos };
-  });
+
+    const data = await response.json();
+    if (!data || !Array.isArray(data.demos)) {
+      console.error(`[DEMO_PAGE_ERROR] Invalid data structure received from ${apiUrl}. Expected { demos: [...] }, got:`, data);
+      throw new Error('Invalid data structure received from API.');
+    }
+    console.log('[DEMO_PAGE_LOG] Received data:', data.demos.length, 'demos');
+    const apiDemos = data.demos as Demo[]; // Extract demos array from API response
+
+    // Manually parse the videos JSON field for each demo from the API
+    processedDemos = apiDemos.map(demo => {
+      let parsedVideos: DemoVideo[] | null = null;
+      if (demo.videos && typeof demo.videos === 'string') { 
+        try {
+          parsedVideos = JSON.parse(demo.videos);
+        } catch (e) {
+          console.error(`Failed to parse videos JSON for demo ${demo.id}:`, e);
+        }
+      } else if (Array.isArray(demo.videos)) { 
+          parsedVideos = demo.videos as unknown as DemoVideo[];
+      }
+      return { ...demo, videos: parsedVideos };
+    });
+    return processedDemos;
+  } catch (error: any) {
+    console.error(`[DEMO_PAGE_ERROR] Exception during fetch from ${apiUrl}. Error: ${error.message}`, error);
+    // Ensure function throws or returns a value that indicates error, e.g., empty array or re-throw
+    // For now, re-throwing will be caught by DemoListPage
+    if (error instanceof Error) throw error;
+    throw new Error('An unexpected error occurred while fetching demos.');
+  }
+  // If an error was thrown in the try block, it's propagated out.
+  // If successful, processedDemos is returned from within the try block.
+  // This path should ideally not be reached if logic is correct, 
+  // but to satisfy all-paths-return and handle unexpected fall-through:
+  return processedDemos; // Returns empty if fetch failed before assignment and error wasn't re-thrown, or populated if successful.
 }
 
+export const dynamic = 'force-dynamic'; // Ensure fresh data on each request
+export const fetchCache = 'force-no-store'; // Opt out of caching for fetch requests
+
 export default async function DemoListPage() {
-  const demos = await getPublishedDemos();
+  let demos: DemoWithParsedVideos[] = [];
+  let fetchError: string | null = null;
+
+  try {
+    demos = await fetchDemosFromApi();
+  } catch (error: any) {
+    console.error('[DEMO_PAGE_ERROR] DemoListPage - Error fetching demos:', error.message);
+    fetchError = error.message || 'Failed to load demos.';
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -83,7 +105,9 @@ export default async function DemoListPage() {
           </p>
         </div>
 
-        {demos.length === 0 ? (
+        {fetchError ? (
+          <p className="text-center text-red-500">Error: {fetchError}</p>
+        ) : demos.length === 0 ? (
           <p className="text-center text-gray-600 text-lg">No demos are currently available. Please check back soon!</p>
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">

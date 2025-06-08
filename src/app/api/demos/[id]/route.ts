@@ -26,12 +26,12 @@ export async function GET(req: Request, { params }: Params) {
       return NextResponse.json({ error: 'Demo not found' }, { status: 404 });
     }
     // Optionally, only return if published or user has specific rights
-    // if (!demo.published) {
-    //   const session = await auth();
-    //   if (!session?.user || (session.user.role !== Role.ADMIN && session.user.role !== Role.CONTENT_ADMIN)) {
-    //     return NextResponse.json({ error: 'Demo not found or not published' }, { status: 404 });
-    //   }
-    // }
+    if (!demo.published) {
+      // For public access, if it's not published, treat as not found.
+      // Admin/Content_Admin could potentially still view unpublished demos if logic was added here based on session.
+      // For now, if not published, it's a 404 for this public-intended GET.
+      return NextResponse.json({ error: 'Demo not found or not published' }, { status: 404 });
+    }
     return NextResponse.json(demo);
   } catch (error) {
     console.error(`Error fetching demo ${params.id}:`, error);
