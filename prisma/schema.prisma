@@ -139,20 +139,27 @@ model User {
 }
 
 model Lead {
-  id          String   @id @default(uuid())
-  schoolName  String
-  name        String
-  phone       String
-  email       String   @unique
-  address     String
-  assignedTo  String?  // User.id of agent, nullable for unassigned
-  agent       User?    @relation("AgentLeads", fields: [assignedTo], references: [id])
-  stageId     String
-  stage       Stage    @relation(fields: [stageId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  notes       Note[]
-  history     LeadHistory[]
+  id                 String    @id @default(uuid())
+  name               String    // From form
+  phone              String    // From form
+  email              String    @unique // From form
+  schoolName         String    // From form
+  numberOfStudents   String?   // NEW: From form (optional in model if not always required elsewhere)
+  howHeard           String?   // NEW: From form (optional in model if not always required elsewhere)
+  
+  demoCode           String?   @unique // NEW: Generated for demo access
+  demoLog            Json?     // NEW: Logs related to demo code (e.g., { generatedAt: "timestamp", accessedAt: "timestamp" })
+
+  address            String?   // Existing: Kept as optional
+  assignedTo         String?   // Existing: User.id of agent, nullable for unassigned
+  agent              User?     @relation("AgentLeads", fields: [assignedTo], references: [id])
+  stageId            String?   // Existing: Kept as optional
+  stage              Stage?    @relation(fields: [stageId], references: [id])
+  
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  notes              Note[]
+  history            LeadHistory[]
   webinarRegistrations WebinarRegistration[]
 }
 

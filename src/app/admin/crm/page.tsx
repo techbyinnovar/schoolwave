@@ -13,6 +13,7 @@ export type Lead = {
   phone: string;
   email: string;
   address: string;
+  demoCode?: string | null; // Added demoCode
   assignedTo?: string | null;
   agent?: { id: string; name?: string | null; email: string } | null;
   stage?: string | { name: string };
@@ -66,7 +67,7 @@ export default function AdminCrmPage() {
   const [assignAgentId, setAssignAgentId] = useState<string>("");
 
   // Define a LeadColumnKey union type for visibleColumns keys
-  type LeadColumnKey = 'schoolName' | 'name' | 'phone' | 'email' | 'address' | 'stage' | 'agent' | 'actions';
+  type LeadColumnKey = 'schoolName' | 'name' | 'phone' | 'email' | 'address' | 'stage' | 'agent' | 'demoCode' | 'actions';
 
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<Record<LeadColumnKey, boolean>>({
@@ -77,6 +78,7 @@ export default function AdminCrmPage() {
     address: true,
     stage: true,
     agent: true,
+    demoCode: true, // Added demoCode, defaulting to visible
     actions: true,
   });
 
@@ -482,6 +484,7 @@ export default function AdminCrmPage() {
                     {visibleColumns.address && <th className="px-4 py-2">Address</th>}
                     {visibleColumns.stage && <th className="px-4 py-2">Stage</th>}
                     {visibleColumns.agent && <th className="px-4 py-2">Assigned Agent</th>}
+                    {visibleColumns.demoCode && <th className="px-4 py-2">Demo Code</th>}
                     {visibleColumns.actions && <th className="px-4 py-2">Actions</th>}
                   </tr>
                 </thead>
@@ -532,6 +535,7 @@ export default function AdminCrmPage() {
                       {visibleColumns.address && <td className="border px-4 py-2">{lead.address}</td>}
                       {visibleColumns.stage && <td className="border px-4 py-2">{getStageName(lead.stage)}</td>}
                       {visibleColumns.agent && <td className="border px-4 py-2">{lead.agent ? `${lead.agent.name ?? lead.agent.email}` : <span className="italic text-gray-400">Unassigned</span>}</td>}
+                      {visibleColumns.demoCode && <td className="border px-4 py-2">{lead.demoCode ?? <span className="italic text-gray-400">N/A</span>}</td>}
                       {visibleColumns.actions && <td className="border px-4 py-2">
                         <button onClick={e => { e.stopPropagation(); handleEdit(lead); }} className="text-blue-600 hover:underline mr-2">Edit</button>
                         <button onClick={e => { e.stopPropagation(); handleDelete(lead.id); }} className="text-red-600 hover:underline">Delete</button>

@@ -1,138 +1,156 @@
+"use client";
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Metadata } from 'next';
-import { Demo } from '@prisma/client'; // Import the Demo type
+// import { Metadata } from 'next'; // Metadata is not typically used directly in client components this way
+import { Demo } from '@prisma/client';
+import { useState, useEffect } from 'react';
+
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
-
-export const metadata: Metadata = {
-  title: 'Product Demos | Schoolwave',
-  description: 'Explore our product demos to see Schoolwave in action.',
-};
+// import DemoCard from '@/components/demo/DemoCard'; // Using direct Link and Image for card structure
+import withDemoAuth from '@/components/auth/withDemoAuth';
 
 interface DemoVideo {
-    url: string;
-    title: string;
-    description?: string | null;
+  url: string;
+  title: string;
+  description?: string | null;
 }
-  
 interface DemoWithParsedVideos extends Omit<Demo, 'videos'> {
-    videos: DemoVideo[] | null;
+  videos: DemoVideo[] | null;
 }
 
 async function fetchDemosFromApi(): Promise<DemoWithParsedVideos[]> {
-  let processedDemos: DemoWithParsedVideos[] = []; // Initialize to empty array
-    const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  // Fetch all published demos by setting a high limit, adjust if proper pagination is needed on this page.
-  const apiUrl = `${baseURL}/api/demos?published=true&page=1&limit=1000`; 
-  console.log(`[DEMO_PAGE_LOG] Fetching from full URL: ${apiUrl}`);
+  const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const apiUrl = `${baseURL}/api/demos?published=true&page=1&limit=1000`;
+  // console.log(`[DEMO_LIST_PAGE_LOG] Fetching from: ${apiUrl}`);
 
   try {
     const response = await fetch(apiUrl, {
-      cache: 'no-store', // Or 'force-cache' or other caching strategies as needed
+      cache: 'no-store',
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(`[DEMO_PAGE_ERROR] Failed to fetch demos from ${apiUrl}. Status: ${response.status}. Response: ${errorBody}`);
+      console.error(`[DEMO_LIST_PAGE_ERROR] API error. Status: ${response.status}. URL: ${apiUrl}. Body: ${errorBody}`);
       throw new Error(`Failed to fetch demos. Status: ${response.status}`);
     }
-
     const data = await response.json();
-    if (!data || !Array.isArray(data.demos)) {
-      console.error(`[DEMO_PAGE_ERROR] Invalid data structure received from ${apiUrl}. Expected { demos: [...] }, got:`, data);
-      throw new Error('Invalid data structure received from API.');
+    if (!data || !data.demos) {
+      console.error(`[DEMO_LIST_PAGE_ERROR] API response missing 'demos' field. URL: ${apiUrl}. Response:`, data);
+      throw new Error("Invalid API response format: 'demos' field missing.");
     }
-    console.log('[DEMO_PAGE_LOG] Received data:', data.demos.length, 'demos');
-    const apiDemos = data.demos as Demo[]; // Extract demos array from API response
+    const apiDemos = data.demos as Demo[];
 
-    // Manually parse the videos JSON field for each demo from the API
-    processedDemos = apiDemos.map(demo => {
+    const processedDemos: DemoWithParsedVideos[] = apiDemos.map(demo => {
       let parsedVideos: DemoVideo[] | null = null;
-      if (demo.videos && typeof demo.videos === 'string') { 
+      if (demo.videos && typeof demo.videos === 'string') {
         try {
           parsedVideos = JSON.parse(demo.videos);
         } catch (e) {
-          console.error(`Failed to parse videos JSON for demo ${demo.id}:`, e);
+          console.error(`[DEMO_LIST_PAGE_ERROR] Failed to parse videos JSON for demo ${demo.id}:`, e);
         }
-      } else if (Array.isArray(demo.videos)) { 
-          parsedVideos = demo.videos as unknown as DemoVideo[];
+      } else if (Array.isArray(demo.videos)) {
+        parsedVideos = demo.videos as unknown as DemoVideo[];
       }
       return { ...demo, videos: parsedVideos };
     });
     return processedDemos;
   } catch (error: any) {
-    console.error(`[DEMO_PAGE_ERROR] Exception during fetch from ${apiUrl}. Error: ${error.message}`, error);
-    // Ensure function throws or returns a value that indicates error, e.g., empty array or re-throw
-    // For now, re-throwing will be caught by DemoListPage
+    console.error(`[DEMO_LIST_PAGE_ERROR] Exception during fetch. URL: ${apiUrl}. Error: ${error.message}`, error);
     if (error instanceof Error) throw error;
     throw new Error('An unexpected error occurred while fetching demos.');
   }
-  // If an error was thrown in the try block, it's propagated out.
-  // If successful, processedDemos is returned from within the try block.
-  // This path should ideally not be reached if logic is correct, 
-  // but to satisfy all-paths-return and handle unexpected fall-through:
-  return processedDemos; // Returns empty if fetch failed before assignment and error wasn't re-thrown, or populated if successful.
 }
 
-export const dynamic = 'force-dynamic'; // Ensure fresh data on each request
-export const fetchCache = 'force-no-store'; // Opt out of caching for fetch requests
+function DemoListPageContent() {
+  const [demos, setDemos] = useState<DemoWithParsedVideos[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-export default async function DemoListPage() {
-  let demos: DemoWithParsedVideos[] = [];
-  let fetchError: string | null = null;
+  useEffect(() => {
+    async function loadDemos() {
+      setIsLoading(true);
+      try {
+        const fetchedDemos = await fetchDemosFromApi();
+        setDemos(fetchedDemos);
+      } catch (error: any) {
+        setFetchError(error.message || 'Failed to load demos.');
+      }
+      setIsLoading(false);
+    }
+    loadDemos();
+  }, []);
 
-  try {
-    demos = await fetchDemosFromApi();
-  } catch (error: any) {
-    console.error('[DEMO_PAGE_ERROR] DemoListPage - Error fetching demos:', error.message);
-    fetchError = error.message || 'Failed to load demos.';
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"></div>
+        <p className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">Loading Demos...</p>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl text-center">
+          <h1 className="text-3xl font-bold text-red-600 dark:text-red-500 mb-4">Error Loading Demos</h1>
+          <p className="text-gray-700 dark:text-gray-300 mb-6">{fetchError}</p>
+          <Link href="/" className="mt-6 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-md transition-colors duration-150">
+            Go to Homepage
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className='bg-[#00164E] mb-6 sticky top-0 z-50'> {/* Made header sticky */}
-             <Header />
-           </div>
-      <div className="container mx-auto px-4 py-12 w-[75%]">
+    <div className="bg-gray-50 dark:bg-gray-950 min-h-screen">
+      <div className='bg-[#00164E] dark:bg-gray-900 mb-6 sticky top-0 z-50 shadow-md'>
+        <Header />
+      </div>
+      <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+          <h1 className="text-4xl font-bold text-gray-800 dark:text-white sm:text-5xl">
             Explore Our Demos
           </h1>
-          <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 sm:mt-4">
-            See how Schoolwave can transform your educational institution. Each demo highlights key features and benefits.
+          <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            See our platform in action. Click on any demo to learn more.
           </p>
         </div>
 
-        {fetchError ? (
-          <p className="text-center text-red-500">Error: {fetchError}</p>
-        ) : demos.length === 0 ? (
-          <p className="text-center text-gray-600 text-lg">No demos are currently available. Please check back soon!</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        {demos.length === 0 && !fetchError && !isLoading && (
+          <div className="text-center py-10">
+            <Image src="/images/no-data.svg" alt="No Demos" width={200} height={200} className="mx-auto mb-4" />
+            <p className="text-xl text-gray-700 dark:text-gray-300">No demos available at the moment.</p>
+            <p className="text-gray-500 dark:text-gray-400">Please check back later.</p>
+          </div>
+        )}
+
+        {demos.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {demos.map((demo) => (
-              <Link href={`/demo/${demo.id}`} key={demo.id} className="group block bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300">
+               <Link href={`/demo/${demo.id}`} key={demo.id} className="group block bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl dark:hover:shadow-indigo-500/50 transition-all duration-300 ease-in-out">
                 <div className="relative w-full h-48 sm:h-56">
                   <Image
-                    src={demo.coverImage || '/images/placeholder-demo-cover.png'} // Provide a fallback image
+                    src={demo.coverImage || '/images/placeholder-demo-cover.png'}
                     alt={`Cover image for ${demo.title}`}
-                    layout="fill"
-                    objectFit="cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    style={{ objectFit: 'cover' }}
                     className="transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
                 <div className="p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">
                     {demo.title}
                   </h2>
-                  {/* Optional: Show a snippet of the description 
-                  <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                    {demo.description || 'No description available.'}
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                    {demo.description || 'Click to learn more about this demo.'}
                   </p>
-                  */}
                   <div className="mt-4">
-                    <span className="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                    <span className="inline-block bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                       {demo.videos?.length || 0} Video{(demo.videos?.length || 0) !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -141,8 +159,10 @@ export default async function DemoListPage() {
             ))}
           </div>
         )}
-      </div>
-      <Footer/>
+      </main>
+      <Footer />
     </div>
   );
 }
+
+export default withDemoAuth(DemoListPageContent);
