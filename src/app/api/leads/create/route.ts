@@ -24,6 +24,7 @@ function generateDemoCode(length = 8): string {
 }
 
 export async function POST(req: NextRequest) {
+  let validatedEmailForCatch: string | undefined;
   try {
     const body = await req.json();
     const validation = leadSchema.safeParse(body);
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { name, phone, email, schoolName, numberOfStudents, howHeard } = validation.data;
+    validatedEmailForCatch = email; // Capture email for use in catch block
 
     // Check if email already exists
     const existingLeadByEmail = await prisma.lead.findUnique({
@@ -92,9 +94,14 @@ export async function POST(req: NextRequest) {
     // Prisma unique constraint violation for email (P2002)
     if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
         // This case should be caught by the explicit check above, but as a fallback:
-        const existingLead = await prisma.lead.findUnique({ where: { email: validation.data.email } });
-        errorMessage = 'A lead with this email already exists.';
-        return NextResponse.json({ message: errorMessage, demoCode: existingLead?.demoCode }, { status: 409 });
+        if (validatedEmailForCatch) {
+          const existingLead = await prisma.lead.findUnique({ where: { email: validatedEmailForCatch } });
+          errorMessage = 'A lead with this email already exists.';
+          return NextResponse.json({ message: errorMessage, demoCode: existingLead?.demoCode }, { status: 409 });
+        } else {
+          errorMessage = 'A lead with this email already exists, but the specific email could not be retrieved for demo code lookup.';
+          return NextResponse.json({ message: errorMessage }, { status: 409 });
+        }
     }
     // Prisma unique constraint violation for demoCode (P2002) - less likely with check but possible
     if (error.code === 'P2002' && error.meta?.target?.includes('demoCode')) {
