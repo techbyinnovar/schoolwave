@@ -21,8 +21,7 @@ interface DemoWithParsedVideos extends Omit<Demo, 'videos'> {
 }
 
 async function fetchDemosFromApi(): Promise<DemoWithParsedVideos[]> {
-  const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const apiUrl = `${baseURL}/api/demos?published=true&page=1&limit=1000`;
+  const apiUrl = `/api/demos?published=true&page=1&limit=1000`;
   // console.log(`[DEMO_LIST_PAGE_LOG] Fetching from: ${apiUrl}`);
 
   try {

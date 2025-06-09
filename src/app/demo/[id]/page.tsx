@@ -22,8 +22,7 @@ interface DemoWithParsedVideos extends Omit<Demo, 'videos'> {
 
 // This function is called client-side within useEffect
 async function fetchDemoFromApi(id: string): Promise<DemoWithParsedVideos | null> {
-  const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const apiUrl = `${baseURL}/api/demos/${id}`;
+  const apiUrl = `/api/demos/${id}`;
   // console.log(`[DEMO_DETAIL_PAGE_LOG] Fetching demo ${id} from: ${apiUrl}`);
 
   try {
