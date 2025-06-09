@@ -29,8 +29,8 @@ const CallToAction =()=>{
           <h1 className='md:text-4xl text-3xl mt-0 mb-3'>Simplify your School&apos;s operations, save time & focus on what truly matters - Quality Education.</h1>
           <p className='lg:text-lg md:text-lg sm:text-lg text-md mb-8'>We&apos;re here to help! Reach out to us for more information or to schedule a demo. Get Started Today and Get One Term Free.</p>
           <div className='flex flex-row gap-4'>
-          <Link href="/book-demo" legacyBehavior passHref>
-            <button className='bg-white py-4 px-10 font-semibold rounded-full shadow-md cursor-pointer text-[#0045f6] hover:bg-[#DFE8FF] transition ease-in delay-150 hover:-translate-y-1 hover:scale-105 duration-700' >Schedule a Demo</button></Link>
+          <Link href="/get_demo_code" legacyBehavior passHref>
+            <button className='bg-white py-4 px-8 font-semibold rounded-full shadow-md cursor-pointer text-[#0045f6] hover:bg-[#DFE8FF] transition ease-in delay-150 hover:-translate-y-1 hover:scale-105 duration-700' >See Schoolwave in action Now!</button></Link>
             <Link href="/signup" legacyBehavior passHref>
               <a className='bg-[#0045f6] py-4 px-10 font-semibold rounded-full shadow-md cursor-pointer text-white hover:bg-[#002b8a] transition ease-in delay-150 hover:-translate-y-1 hover:scale-105 duration-700 flex items-center justify-center'>Sign Up</a>
             </Link>

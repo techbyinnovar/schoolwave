@@ -77,10 +77,10 @@ export default function LandingHero(){
             >
               Schedule a Demo
             </button></Link>
-            <Link href="/signup"><button
-              className="bg-white hover:bg-[#DFE8FF] text-[#0045F6] border border-[#0045F6] rounded-full px-12 py-5 transition ease-in delay-150 hover:-translate-y-1 hover:scale-105 duration-700 cursor-pointer md:text-lg"
+            <Link href="/get_demo_code"><button
+              className="bg-white hover:bg-[#DFE8FF] text-[#0045F6] border border-[#0045F6] rounded-full px-8 py-5 transition ease-in delay-150 hover:-translate-y-1 hover:scale-105 duration-700 cursor-pointer md:text-lg font-semibold"
             >
-              Signup
+              See Schoolwave in action Now!
             </button></Link>
           </div>
         </div>

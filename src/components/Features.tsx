@@ -1,4 +1,5 @@
 import Image from "next/image"
+import Link from 'next/link'
 import calendar from '../../public/calendar.png'
 import attend from '../../public/attend (1).png'
 import security from '../../public/encrypted.png'
@@ -263,10 +264,21 @@ export default function Features(){
           </div>
         </div>
       </div>
+      {/* CTA Button Start */}
+      <div className="pt-16 text-center mt-12">
+        <Link href="/get_demo_code">
+          <button
+            className="bg-white hover:bg-[#DFE8FF] text-[#0045F6] border border-[#0045F6] rounded-full px-8 py-5 transition ease-in delay-150 hover:-translate-y-1 hover:scale-105 duration-700 cursor-pointer md:text-lg font-semibold"
+          >
+            See Schoolwave in action Now!
+          </button>
+        </Link>
+      </div>
+      {/* CTA Button End */}
     </div>
 
     {/* OTHER FEATURES */}
-    <div className="mt-48 rounded-4xl bg-[#cfebfd] flex justify-between items-start gap-52 lg:h-[698px] h-[300px] lg:rounded-l-[100px] p-0 bg-[url('/sch_element3.png')] bg-cover bg-center overflow-hidden">
+    <div className="mt-12 rounded-4xl bg-[#cfebfd] flex justify-between items-start gap-52 lg:h-[698px] h-[300px] lg:rounded-l-[100px] p-0 bg-[url('/sch_element3.png')] bg-cover bg-center overflow-hidden">
       <div className="pl-32 py-64 w-[50%] hidden lg:block">
         <h1 className="mt-6 font-bold text-[#0045f6] lg:text-4xl leading-normal md:text-2xl sm:text-2xl text-3xl md:mb-4 mb-4">Other Schoolwave Features</h1>
         <p className="mb-20">All your school management & operations <br /> on one platform!</p>

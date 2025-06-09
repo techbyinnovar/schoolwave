@@ -102,6 +102,11 @@ export default function BookDemoPage() {
           <Image src="/schoolwave.png" alt="Schoolwave Logo" width={120} height={120} className="mb-8 rounded-full shadow-lg" />
           <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-lg">
             <h2 className="text-2xl font-bold mb-4">Book a Demo</h2>
+            <div className="my-4 text-center">
+              <Link href="/get_demo_code" className="inline-block bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300 ease-in-out">
+                Watch our pre-recorded demo Now
+              </Link>
+            </div>
             {error && <div className="text-red-600 mb-2">{error}</div>}
             {success && <div className="text-green-600 mb-2">Demo booked successfully !!!</div>}
             {step === 1 && (

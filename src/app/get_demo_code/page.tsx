@@ -127,10 +127,11 @@ export default function GetDemoCodePage() {
         <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 md:p-12 rounded-xl shadow-2xl">
           <div className="text-center mb-10">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">
-              Get Your Schoolwave Demo Code
+              🎥 Watch Our Demo Video Now
             </h1>
             <p className="mt-3 text-gray-600 dark:text-gray-300">
-              Fill out the form below to receive your exclusive demo code and explore Schoolwave features.
+              Fill out the form below to get instant access!
+
             </p>
           </div>
 
@@ -217,7 +218,7 @@ export default function GetDemoCodePage() {
                       </svg>
                       Processing...
                     </>
-                  ) : 'Get Demo Code'}
+                  ) : 'Continue'}
                 </button>
               </div>
             </form>
