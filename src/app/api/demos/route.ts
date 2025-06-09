@@ -4,6 +4,19 @@ import { auth } from '@/auth'; // Assuming your auth setup is in '@/auth'
 import { DemoCreateSchema } from '@/lib/schemas/demoSchemas';
 import { Role } from '@prisma/client'; // Make sure Role enum is in your prisma schema
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+};
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
 // POST /api/demos - Create a new demo
 export async function POST(req: Request) {
   try {
@@ -32,13 +45,22 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(newDemo, { status: 201 });
+    return new Response(JSON.stringify(newDemo), {
+      status: 201,
+      headers: corsHeaders,
+    });
   } catch (error) {
     console.error('Error creating demo:', error);
     if (error instanceof Error && error.name === 'PrismaClientValidationError') {
-        return NextResponse.json({ error: 'Database validation error creating demo.', details: error.message }, { status: 400 });
+        return new Response(JSON.stringify({ error: 'Database validation error creating demo.', details: error.message }), {
+      status: 400,
+      headers: corsHeaders,
+    });
     }
-    return NextResponse.json({ error: 'Failed to create demo' }, { status: 500 });
+    return new Response(JSON.stringify({ error: 'Failed to create demo' }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }
 
@@ -85,14 +107,20 @@ export async function GET(req: Request) {
 
     const totalCount = await prisma.demo.count({ where: whereClause });
 
-    return NextResponse.json({
+    return new Response(JSON.stringify({
       demos,
       totalCount,
       currentPage: page,
       totalPages: Math.ceil(totalCount / limit),
+    }), {
+      status: 200,
+      headers: corsHeaders,
     });
   } catch (error) {
     console.error('Error fetching demos:', error);
-    return NextResponse.json({ error: 'Failed to fetch demos' }, { status: 500 });
+    return new Response(JSON.stringify({ error: 'Failed to fetch demos' }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }

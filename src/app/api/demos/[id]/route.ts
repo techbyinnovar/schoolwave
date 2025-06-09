@@ -4,6 +4,19 @@ import { auth } from '@/auth'; // Assuming your auth setup is in '@/auth'
 import { DemoUpdateSchema } from '@/lib/schemas/demoSchemas';
 import { Role } from '@prisma/client'; // Make sure Role enum is in your prisma schema
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+};
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
 interface Params {
   params: { id: string };
 }
@@ -23,19 +36,31 @@ export async function GET(req: Request, { params }: Params) {
     });
 
     if (!demo) {
-      return NextResponse.json({ error: 'Demo not found' }, { status: 404 });
+      return new Response(JSON.stringify({ error: 'Demo not found' }), {
+        status: 404,
+        headers: corsHeaders,
+      });
     }
     // Optionally, only return if published or user has specific rights
     if (!demo.published) {
       // For public access, if it's not published, treat as not found.
       // Admin/Content_Admin could potentially still view unpublished demos if logic was added here based on session.
       // For now, if not published, it's a 404 for this public-intended GET.
-      return NextResponse.json({ error: 'Demo not found or not published' }, { status: 404 });
+      return new Response(JSON.stringify({ error: 'Demo not found or not published' }), {
+        status: 404,
+        headers: corsHeaders,
+      });
     }
-    return NextResponse.json(demo);
+    return new Response(JSON.stringify(demo), {
+      status: 200,
+      headers: corsHeaders,
+    });
   } catch (error) {
     console.error(`Error fetching demo ${params.id}:`, error);
-    return NextResponse.json({ error: 'Failed to fetch demo' }, { status: 500 });
+    return new Response(JSON.stringify({ error: 'Failed to fetch demo' }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }
 
