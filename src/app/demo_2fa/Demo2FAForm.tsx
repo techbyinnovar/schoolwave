@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 const DEMO_CODE_STORAGE_KEY = 'demo_code';
 
@@ -64,6 +65,12 @@ export default function Demo2FAForm() {
           </button>
         </div>
       </form>
+      <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
+        Don't have a code?{' '}
+        <Link href="/get_demo_code" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+          Click here to get your code
+        </Link>
+      </p>
     </div>
   );
 }
