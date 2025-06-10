@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from 'react'
+
+import { Suspense } from 'react';
+import PromoHandler from '@/components/PromoHandler';
 import Header from '@/components/Header'
 import CallToAction from '@/components/CallToAction'
 import Footer from '@/components/Footer'
@@ -11,7 +13,6 @@ import Features from '@/components/Features'
 import FAQ from '@/components/FAQ'
 
 export default function Example() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
   <div className="bg-white">
@@ -41,6 +42,11 @@ export default function Example() {
     </div>
 
     <Footer />
+
+    {/* Promo Popup Handler with Suspense */}
+    <Suspense fallback={null}>
+      <PromoHandler />
+    </Suspense>
   
   </div>
   )

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, CheckCircle } from 'lucide-react';
 
 interface RegistrationFormProps {
@@ -18,6 +19,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({
   isFree,
   price 
 }) => {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     fullName: '',
     whatsappNumber: '',
@@ -48,13 +50,14 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({
         }),
       });
       if (res.ok) {
-        setIsSubmitted(true);
+        setIsSubmitted(true); // Show success message in modal first
+        // Wait a short moment for the user to see the success message before redirecting
         setTimeout(() => {
-          onClose();
-          setIsSubmitted(false); // Reset for next open
+          onClose(); // Close the modal
           setFormData({ fullName: '', whatsappNumber: '', email: '' }); // Clear form
           setIsSubmitting(false); // Reset submitting state
-        }, 3000); // Increased timeout for user to read success message
+          router.push('/?promo=true'); // Then redirect
+        }, 1500); // Timeout for user to see success message
       } else {
         const errorData = await res.json().catch(() => ({ message: 'Registration failed. Please try again.' }));
         alert(errorData.message || 'Registration failed. Please try again.');

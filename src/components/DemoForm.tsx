@@ -42,6 +42,7 @@ export const DemoForm = () => {
         });
 
         if (response.ok) {
+          form.current.reset(); 
           Swal.fire({
             title: "Demo Request Sent!",
             text: "Thanks for booking a demo. Expect a meeting invite soon, via your email.",
@@ -51,7 +52,6 @@ export const DemoForm = () => {
             iconColor: "#0045F6",
             confirmButtonColor: "#0045F6",
           });
-          form.current.reset();
         } else {
           throw new Error("Failed to send request");
         }
