@@ -1,6 +1,7 @@
 // REST API for User CRUD
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "../../../../prisma/client";
+import bcrypt from 'bcryptjs';
 
 
 export async function GET(req: NextRequest) {
@@ -19,10 +20,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const data = await req.json();
+
+  // Hash password if present
+  if (data.password) {
+    const saltRounds = 10;
+    data.password = await bcrypt.hash(data.password, saltRounds);
+  }
+
   if (data.id) {
+    // Update existing user
     const user = await prisma.user.update({ where: { id: data.id }, data });
     return NextResponse.json({ user });
   } else {
+    // Create new user
     const user = await prisma.user.create({ data });
     return NextResponse.json({ user });
   }
