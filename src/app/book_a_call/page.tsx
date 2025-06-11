@@ -102,7 +102,7 @@ export default function BookACallPage() {
           />
         </div>
         {error && <div className="text-red-600 text-sm">{error}</div>}
-        {success && <div className="text-green-600 text-sm">Call booked successfully! We'll contact you soon.</div>}
+        {success && <span className="text-green-600 font-semibold">We&apos;ll be in touch soon!</span>}
         <button
           type="submit"
           disabled={loading}

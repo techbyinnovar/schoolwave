@@ -40,7 +40,7 @@ export default async function RequestsPage() {
               <td className="px-4 py-2 border text-xs">
                 <pre className="whitespace-pre-wrap break-all">{JSON.stringify(req.details, null, 2)}</pre>
               </td>
-              <td className="px-4 py-2 border">{new Date(req.createdAt).toLocaleString()}</td>
+              <td className="px-4 py-2 border">{new Date(req.requestedAt).toLocaleString()}</td>
             </tr>
           ))}
         </tbody>
