@@ -18,6 +18,9 @@ interface Webinar {
   author?: { // Optional author details if included from API
     name?: string | null;
   } | null;
+  _count?: { // Add this for registration count
+    registrations?: number;
+  };
   // Add other fields you expect to list
 }
 

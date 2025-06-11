@@ -23,6 +23,9 @@ interface Webinar {
     name?: string | null;
   } | null;
   createdAt: string; // Or Date
+  _count?: { // For registration count
+    registrations?: number;
+  };
   // Add other fields you expect to list
 }
 
@@ -233,6 +236,7 @@ export default function WebinarListClient({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registrations</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -250,6 +254,7 @@ export default function WebinarListClient({
                       {webinar.published ? 'Published' : 'Draft'}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{webinar._count?.registrations ?? 0}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{webinar.author?.name || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2 flex items-center">
                     <Link href={`/webinar/${webinar.slug}`} passHref legacyBehavior>
