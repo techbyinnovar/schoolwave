@@ -26,15 +26,28 @@ export default function BookACallPage() {
     setLoading(true);
     setError("");
     setSuccess(false);
-    // TODO: Replace with real API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch("/api/book_a_call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          preferredDay: callDate,
+          preferredTime: callTime,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Booking failed");
       setSuccess(true);
       setForm(initialForm);
       setCallDate("");
       setCallTime("");
-    }, 1200);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    }
+    setLoading(false);
   };
+
 
   return (
     <div className="max-w-xl mx-auto py-12 px-4">

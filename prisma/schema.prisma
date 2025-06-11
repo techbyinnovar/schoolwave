@@ -161,6 +161,22 @@ model Lead {
   notes              Note[]
   history            LeadHistory[]
   webinarRegistrations WebinarRegistration[]
+  requests           Request[]
+}
+
+enum RequestType {
+  CALL
+  DEMO
+  VISIT
+}
+
+model Request {
+  id           String      @id @default(uuid())
+  type         RequestType
+  leadId       String
+  lead         Lead        @relation(fields: [leadId], references: [id])
+  requestedAt  DateTime    @default(now())
+  details      Json?
 }
 
 model Note {

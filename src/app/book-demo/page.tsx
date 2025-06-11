@@ -39,22 +39,7 @@ export default function BookDemoPage() {
     setError("");
     setSuccess(false);
     try {
-      // Get demo stage id from settings
-      let demoStageId = undefined;
-      const settingRes = await fetch('/api/setting?key=demo_stage_id');
-      const settingData = await settingRes.json();
-      if (settingData.value) {
-        demoStageId = settingData.value;
-      } else {
-        // fallback: find stage by name
-        const stageRes = await fetch("/api/stage");
-        const stageData = await stageRes.json();
-        const demoStage = (stageData.stages || []).find((s: any) => s.name.toLowerCase().includes("demo"));
-        if (demoStage) demoStageId = demoStage.id;
-      }
-      if (!demoStageId) throw new Error("Demo stage not found");
-      // Create lead
-      const leadRes = await fetch("/api/lead", {
+      const res = await fetch("/api/book-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -64,22 +49,16 @@ export default function BookDemoPage() {
           email: form.contactEmail,
           address: form.address,
           numStudents: form.numStudents,
-          stageId: demoStageId,
+          demoDate,
+          demoTime,
         }),
       });
-      if (!leadRes.ok) throw new Error("Failed to create lead");
-      const leadData = await leadRes.json();
-      const leadId = leadData.lead?.id;
-      if (!leadId) throw new Error("Could not get lead id");
-      // Add note with demo date/time
-      const noteContent = `Demo booked for ${demoDate} at ${demoTime}`;
-      const noteRes = await fetch("/api/note", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId, content: noteContent }),
-      });
-      if (!noteRes.ok) throw new Error("Failed to add demo note");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Booking failed");
       setSuccess(true);
+      setForm(initialForm);
+      setDemoDate("");
+      setDemoTime("");
       setTimeout(() => {
         setSuccess(false);
         const params = new URLSearchParams({
@@ -93,6 +72,7 @@ export default function BookDemoPage() {
     }
     setLoading(false);
   };
+
 
   return (
     <div className="min-h-screen flex flex-col bg-[#00164E] bg-[url('/sch_elementwhite.png')] bg-contain bg-center">
