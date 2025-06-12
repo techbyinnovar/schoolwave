@@ -46,6 +46,7 @@ export default function AdminSettingsPage() {
   const [contactStageId, setContactStageId] = useState<string>("");
   const [demoStageId, setDemoStageId] = useState<string>("");
   const [webinarStageId, setWebinarStageId] = useState<string>("");
+  const [watchedDemoStageId, setWatchedDemoStageId] = useState<string>("");
   const [actions, setActions] = useState<Action[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -79,16 +80,18 @@ export default function AdminSettingsPage() {
       const templatesJson = await templatesRes.json();
       setTemplates(templatesJson.result?.data || []);
 
-      const [signupRes, contactRes, demoRes, webinarRes] = await Promise.all([
+      const [signupRes, contactRes, demoRes, webinarRes, watchedDemoRes] = await Promise.all([
         fetch("/api/setting?key=signup_stage_id"),
         fetch("/api/setting?key=contact_stage_id"),
         fetch("/api/setting?key=demo_stage_id"),
         fetch("/api/setting?key=webinar_stage_id"),
+        fetch("/api/setting?key=watched_demo_stage_id"),
       ]);
       setSignupStageId((await signupRes.json()).value || "");
       setContactStageId((await contactRes.json()).value || "");
       setDemoStageId((await demoRes.json()).value || "");
       setWebinarStageId((await webinarRes.json()).value || "");
+      setWatchedDemoStageId((await watchedDemoRes.json()).value || "");
 
       const actionsRes = await fetch("/api/action");
       const actionsJson = await actionsRes.json();
@@ -127,6 +130,11 @@ export default function AdminSettingsPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key: "webinar_stage_id", value: webinarStageId }),
+        }),
+        fetch("/api/setting", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: "watched_demo_stage_id", value: watchedDemoStageId }),
         }),
         fetch("/api/setting", {
           method: "POST",
@@ -416,6 +424,15 @@ export default function AdminSettingsPage() {
               <div>
                 <label>Webinar Stage</label>
                 <select className="w-full border rounded px-2 py-1" value={webinarStageId} onChange={e => setWebinarStageId(e.target.value)}>
+                  <option value="">-- Select Stage --</option>
+                  {stages.map(stage => (
+                    <option key={stage.id} value={stage.id}>{stage.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Watched Demo Stage</label>
+                <select className="w-full border rounded px-2 py-1" value={watchedDemoStageId} onChange={e => setWatchedDemoStageId(e.target.value)}>
                   <option value="">-- Select Stage --</option>
                   {stages.map(stage => (
                     <option key={stage.id} value={stage.id}>{stage.name}</option>

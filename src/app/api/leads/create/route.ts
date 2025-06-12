@@ -54,6 +54,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Fetch watched_demo_stage_id from settings
+    let watchedDemoStageId: string | null = null;
+    try {
+      const setting = await prisma.setting.findUnique({ where: { key: 'watched_demo_stage_id' } });
+      if (setting && setting.value) {
+        watchedDemoStageId = typeof setting.value === 'string' 
+          ? setting.value 
+          : String(setting.value);
+      }
+    } catch (e) {
+      // If error, just skip assigning stage
+      watchedDemoStageId = null;
+    }
+
     let demoCode = generateDemoCode();
     let attempts = 0;
     // Ensure demo code is unique
@@ -77,6 +91,7 @@ export async function POST(req: NextRequest) {
         howHeard,
         demoCode,
         demoLog: { initialStatus: 'Demo code generated', generatedAt: new Date().toISOString() }, // Initial demo_log as JSON
+        ...(watchedDemoStageId ? { stageId: watchedDemoStageId } : {}),
       },
     });
 

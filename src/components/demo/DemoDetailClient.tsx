@@ -33,8 +33,29 @@ const getCloudinaryThumbnail = (videoUrl: string) => {
 const DemoDetailClient: React.FC<DemoDetailClientProps> = ({ demo }) => {
   const [selectedVideo, setSelectedVideo] = useState<DemoVideo | null>(null);
 
-  const openModal = (video: DemoVideo) => {
+  const openModal = async (video: DemoVideo) => {
     setSelectedVideo(video);
+    const demoCode = typeof window !== 'undefined' ? localStorage.getItem('demoCode') : null;
+    const leadId = typeof window !== 'undefined' ? localStorage.getItem('leadId') : null;
+    console.log('[DemoDetailClient] openModal called', { leadId, videoTitle: video.title, videoUrl: video.url });
+    if (leadId) {
+      try {
+        const res = await fetch(`/api/demo_leads/${leadId}/note`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoTitle: video.title, videoUrl: video.url }),
+        });
+        const data = await res.json();
+        console.log('[DemoDetailClient] Note API response', { status: res.status, data });
+        if (!res.ok) {
+          console.error('[DemoDetailClient] Note API error', data);
+        }
+      } catch (e) {
+        console.error('[DemoDetailClient] Failed to log demo watch note', e);
+      }
+    } else {
+      console.warn('[DemoDetailClient] No leadId found in localStorage, note API not called');
+    }
   };
 
   const closeModal = () => {

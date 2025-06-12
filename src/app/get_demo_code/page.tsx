@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -37,6 +37,17 @@ const studentNumberOptions = [
 
 export default function GetDemoCodePage() {
   const router = useRouter();
+  // Redirect if demo_code and leadId are present
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const demoCode = localStorage.getItem('demo_code');
+      const leadId = localStorage.getItem('leadId');
+      if (demoCode && leadId) {
+        router.replace('/demo');
+      }
+    }
+  }, []);
+
   const [formData, setFormData] = useState<FormData>({
     name: '',
     phone: '',
@@ -97,6 +108,9 @@ export default function GetDemoCodePage() {
             setSuccessMessage(result.message); // Show message like "A lead with this email already exists..."
             setGeneratedDemoCode(result.demoCode);
             localStorage.setItem('demo_code', result.demoCode);
+            if (result.leadId) {
+              localStorage.setItem('leadId', result.leadId);
+            }
             setError(null); // Clear general error as it's a specific case
         }
         setIsLoading(false);
@@ -106,6 +120,9 @@ export default function GetDemoCodePage() {
       setSuccessMessage(result.message || 'Demo code generated successfully!');
       setGeneratedDemoCode(result.demoCode);
       localStorage.setItem('demo_code', result.demoCode); // Store demo code for access
+      if (result.leadId) {
+        localStorage.setItem('leadId', result.leadId);
+      }
       
       // Clear form on success
       setFormData({ name: '', phone: '', email: '', schoolName: '', numberOfStudents: '', howHeard: '' });
