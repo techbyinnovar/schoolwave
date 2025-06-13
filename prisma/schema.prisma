@@ -115,6 +115,7 @@ model Stage {
   name      String   @unique
   order     Int      // for sorting columns
   leads     Lead[]
+  forms     Form[]    @relation("StageForms")
   color     String?  // optional for UI
   defaultTemplateId String? // optional relation to MessageTemplate
   defaultTemplate   MessageTemplate? @relation("DefaultTemplateForStage", fields: [defaultTemplateId], references: [id])
@@ -154,7 +155,7 @@ model Lead {
   assignedTo         String?   // Existing: User.id of agent, nullable for unassigned
   agent              User?     @relation("AgentLeads", fields: [assignedTo], references: [id])
   stageId            String?   // Existing: Kept as optional
-  stage              Stage?    @relation(fields: [stageId], references: [id])
+  stage              Stage?    @relation("StageForms", fields: [stageId], references: [id])
   
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -162,6 +163,7 @@ model Lead {
   history            LeadHistory[]
   webinarRegistrations WebinarRegistration[]
   requests           Request[]
+  formResponses      FormResponse[] @relation("LeadFormResponses")
 }
 
 enum RequestType {
@@ -335,4 +337,27 @@ model Demo {
   // If you had a relation to a User model, you might add something like:
   // userId      String?
   // user        User?     @relation(fields: [userId], references: [id])
+}
+
+model Form {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  fields      Json     // JSON schema or array of field definitions
+  published   Boolean  @default(false)
+  stageId     String?  // Stage to assign responders/leads to
+  stage       Stage?   @relation(name: "StageForms", fields: [stageId], references: [id])
+  responses   FormResponse[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FormResponse {
+  id          String   @id @default(uuid())
+  formId      String
+  form        Form     @relation(fields: [formId], references: [id])
+  leadId      String
+  lead        Lead     @relation("LeadFormResponses", fields: [leadId], references: [id])
+  responseData Json    // JSON object with answers
+  createdAt   DateTime @default(now())
 }
