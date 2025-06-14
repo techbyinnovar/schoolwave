@@ -11,7 +11,7 @@ export async function GET(
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const lead = await prisma.lead.findUnique({
     where: { id },
-    include: { agent: true, stage: true, notes: { include: { user: true } }, history: { include: { user: true } } },
+    include: { agent: true, stage: true, ownedBy: true, notes: { include: { user: true } }, history: { include: { user: true } } },
   });
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
   return NextResponse.json({ result: { data: lead } });

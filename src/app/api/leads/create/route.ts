@@ -14,19 +14,23 @@ const leadSchema = z.object({
   howHeard: z.string().min(1, { message: 'This field is required' }),
 });
 
-function generateDemoCode(length = 8): string {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = 'SWDEMO-';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
+function generateDemoCode(): string {
+  // Generate a random 6-digit numeric code as a string (with leading zeros)
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 export async function POST(req: NextRequest) {
+  // Support referral code (?ref=CODE) in URL or referralCode in body
+  const url = new URL(req.url, 'http://localhost');
+  let refCode = url.searchParams.get('ref');
+
   let validatedEmailForCatch: string | undefined;
   try {
     const body = await req.json();
+    // If referralCode is present in body, prefer it over URL param
+    if (body.referralCode) {
+      refCode = body.referralCode;
+    }
     const validation = leadSchema.safeParse(body);
 
     if (!validation.success) {
@@ -80,6 +84,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Could not generate a unique demo code. Please try again.' }, { status: 500 });
     }
 
+    // If refCode is present, try to find agent by referralCode
+    let ownedById: string | undefined = undefined;
+    if (refCode) {
+      // Assume User model has a field 'referralCode' (string)
+      const agent = await prisma.user.findFirst({ where: { referralCode: refCode } });
+      if (agent) {
+        ownedById = agent.id;
+      }
+    }
 
     const newLead = await prisma.lead.create({
       data: {
@@ -92,6 +105,7 @@ export async function POST(req: NextRequest) {
         demoCode,
         demoLog: { initialStatus: 'Demo code generated', generatedAt: new Date().toISOString() }, // Initial demo_log as JSON
         ...(watchedDemoStageId ? { stageId: watchedDemoStageId } : {}),
+        ...(ownedById ? { ownedById } : {}),
       },
     });
 

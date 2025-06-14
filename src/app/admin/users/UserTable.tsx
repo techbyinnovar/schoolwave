@@ -7,6 +7,7 @@ type User = {
   name?: string;
   role: "ADMIN" | "CONTENT_ADMIN" | "AGENT";
   createdAt: string;
+  referralCode?: string;
 };
 
 type ModalProps = {
@@ -183,6 +184,7 @@ export default function UserTable() {
               <th className="py-2 px-2">Name</th>
               <th className="py-2 px-2">Role</th>
               <th className="py-2 px-2">Created</th>
+              <th className="py-2 px-2">Referral Link</th>
               <th className="py-2 px-2">Actions</th>
             </tr>
           </thead>
@@ -193,6 +195,45 @@ export default function UserTable() {
                 <td className="py-1 px-2">{user.name}</td>
                 <td className="py-1 px-2">{user.role}</td>
                 <td className="py-1 px-2 text-xs">{new Date(user.createdAt).toLocaleString()}</td>
+                <td className="py-1 px-2">
+                  {user.role === "AGENT" && user.referralCode ? (
+                    <div className="flex items-center gap-2">
+                      <span className="truncate max-w-[120px] text-xs bg-gray-100 px-2 py-1 rounded text-blue-700 border border-blue-200 select-all">
+                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/get_demo_code?ref=${user.referralCode}`}
+                      </span>
+                      <button
+                        className="text-xs text-blue-600 hover:underline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/get_demo_code?ref=${user.referralCode}`);
+                        }}
+                        title="Copy referral link"
+                      >Copy</button>
+                    </div>
+                  ) : user.role === "AGENT" ? (
+                    <button
+                      className="text-xs text-blue-600 underline px-2 py-1 rounded border border-blue-200 bg-blue-50 hover:bg-blue-100 disabled:opacity-60"
+                      disabled={loading}
+                      onClick={async () => {
+                        setLoading(true);
+                        try {
+                          const res = await fetch("/api/get_demo_code/referral", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ agentId: user.id }),
+                          });
+                          const data = await res.json();
+                          if (data.code) {
+                            setUsers((prev) => prev.map(u => u.id === user.id ? { ...u, referralCode: data.code } : u));
+                          }
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >{loading ? <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin align-middle"></span> : "Generate"}</button>
+                  ) : (
+                    <span className="text-gray-400 italic text-xs">-</span>
+                  )}
+                </td>
                 <td className="py-1 px-2 flex gap-2 justify-center">
                   <button
                     className="text-blue-600 hover:underline"
