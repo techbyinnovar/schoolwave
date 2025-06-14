@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import BannerImageUploader from '@/components/admin/forms/BannerImageUploader';
 
 export default function EditFormPage() {
   const { id } = useParams() as { id: string };
@@ -11,6 +12,7 @@ export default function EditFormPage() {
   const [fields, setFields] = useState('');
   const [stageId, setStageId] = useState('');
   const [published, setPublished] = useState(false);
+  const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -24,6 +26,7 @@ export default function EditFormPage() {
         setFields(JSON.stringify(data.fields, null, 2));
         setStageId(data.stageId || '');
         setPublished(!!data.published);
+        setBannerImage(data.bannerImage || null);
         setLoading(false);
       });
   }, [id]);
@@ -35,7 +38,7 @@ export default function EditFormPage() {
       const res = await fetch(`/api/forms/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, fields: JSON.parse(fields), stageId, published }),
+        body: JSON.stringify({ name, description, fields: JSON.parse(fields), stageId, published, bannerImage }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to update form');
       router.push(`/admin/forms/${id}`);
@@ -51,6 +54,7 @@ export default function EditFormPage() {
     <div className="max-w-2xl mx-auto py-8">
       <h1 className="text-xl font-bold mb-4">Edit Form</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <BannerImageUploader value={bannerImage ?? undefined} onChange={setBannerImage} />
         <div>
           <label className="block font-medium">Name</label>
           <input className="input input-bordered w-full" value={name} onChange={e => setName(e.target.value)} required />
@@ -62,7 +66,7 @@ export default function EditFormPage() {
         <div>
           <label className="block font-medium">Fields (JSON array)</label>
           <textarea className="textarea textarea-bordered w-full font-mono" rows={4} value={fields} onChange={e => setFields(e.target.value)} required />
-          <div className="text-xs text-gray-500 mt-1">Example: [{'{'}"label":"Email","type":"email","name":"email","required":true{'}'}]</div>
+          <div className="text-xs text-gray-500 mt-1">Example: [{'{'}&quot;label&quot;:&quot;Email&quot;,&quot;type&quot;:&quot;email&quot;,&quot;name&quot;:&quot;email&quot;,&quot;required&quot;:true{'}'}]</div>
         </div>
         <div>
           <label className="block font-medium">Stage ID (optional)</label>

@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
         fields: data.fields,
         published: !!data.published,
         stageId: data.stageId || null,
+        bannerImage: data.bannerImage || null,
       },
     });
     return NextResponse.json(form, { status: 201 });

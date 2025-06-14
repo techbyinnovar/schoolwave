@@ -27,44 +27,51 @@ export default function FormsAdminPage() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Forms</h1>
-        <Link href="/admin/forms/new" className="btn btn-primary">New Form</Link>
+    <div className="max-w-5xl mx-auto py-10">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-center w-full">Forms</h1>
+        <Link href="/admin/forms/new" className="ml-4 btn btn-primary shadow">New Form</Link>
       </div>
       {loading ? (
-        <div>Loading...</div>
+        <div className="text-center py-8">Loading...</div>
       ) : (
-        <table className="table w-full">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Description</th>
-              <th>Stage</th>
-              <th>Published</th>
-              <th>Responses</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {forms.map(form => (
-              <tr key={form.id}>
-                <td>
-                  <Link href={`/admin/forms/${form.id}`} className="text-blue-600 underline">{form.name}</Link>
-                </td>
-                <td>{form.description}</td>
-                <td>{form.stage?.name || '-'}</td>
-                <td>{form.published ? 'Yes' : 'No'}</td>
-                <td>{form._count?.responses ?? 0}</td>
-                <td>
-                  <Link href={`/admin/forms/${form.id}/edit`} className="btn btn-xs btn-secondary mr-2">Edit</Link>
-                  <Link href={`/f/${form.id}`} className="btn btn-xs btn-accent" target="_blank" rel="noopener noreferrer">View Public Page</Link>
-                  <Link href={`/admin/forms/${form.id}/responses`} className="btn btn-xs">Responses</Link>
-                </td>
+        <div className="bg-white rounded-2xl shadow-lg p-4">
+          <table className="min-w-full divide-y divide-gray-200 rounded-xl overflow-hidden">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Stage</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Published</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Responses</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {forms.map((form, idx) => (
+                <tr
+                  key={form.id}
+                  className={idx % 2 === 0 ? 'bg-gray-50 hover:bg-blue-50 transition' : 'bg-white hover:bg-blue-50 transition'}
+                >
+                  <td className="px-4 py-3 font-medium text-blue-700">
+                    <Link href={`/admin/forms/${form.id}`} className="hover:underline">{form.name}</Link>
+                  </td>
+                  <td className="px-4 py-3 text-gray-700">{form.description}</td>
+                  <td className="px-4 py-3">{form.stage?.name || '-'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${form.published ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{form.published ? 'Yes' : 'No'}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center">{form._count?.responses ?? 0}</td>
+                  <td className="px-4 py-3 space-x-1">
+                    <Link href={`/admin/forms/${form.id}/edit`} className="btn btn-xs btn-secondary">Edit</Link>
+                    <Link href={`/f/${form.id}`} className="btn btn-xs btn-accent" target="_blank" rel="noopener noreferrer">View Public Page</Link>
+                    <Link href={`/admin/forms/${form.id}/responses`} className="btn btn-xs">Responses</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

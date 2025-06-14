@@ -52,7 +52,7 @@ export default function GetDemoCodePage() {
     name: '',
     phone: '',
     email: '',
-    schoolName: '',
+    schoolName: '', // optional
     numberOfStudents: '',
     howHeard: '',
   });
@@ -80,10 +80,11 @@ export default function GetDemoCodePage() {
     setGeneratedDemoCode(null);
 
     // Basic client-side validation for empty fields
-    for (const key in formData) {
+    const requiredFields = ['name', 'phone', 'email', 'numberOfStudents', 'howHeard'];
+    for (const key of requiredFields) {
       if (formData[key as keyof FormData].trim() === '') {
-        const fieldName = key.replace(/([A-Z])/g, ' $1').toLowerCase(); // e.g. schoolName -> school name
-        setError(`Please fill in all fields. The '${fieldName}' field is missing.`);
+        const fieldName = key.replace(/([A-Z])/g, ' $1').toLowerCase(); // e.g. numberOfStudents -> number of students
+        setError(`Please fill in all required fields. The '${fieldName}' field is missing.`);
         setIsLoading(false);
         return;
       }

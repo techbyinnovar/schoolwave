@@ -39,6 +39,20 @@ export async function POST(req: NextRequest) {
         response: data.responseData,
       },
     });
+
+    // Fetch form name
+    const form = await prisma.form.findUnique({ where: { id: data.formId } });
+    let noteContent = `Form submitted: ${form?.name || data.formId}\n`;
+    for (const [key, value] of Object.entries(data.responseData)) {
+      noteContent += `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}\n`;
+    }
+    await prisma.note.create({
+      data: {
+        leadId: lead.id,
+        content: noteContent,
+      },
+    });
+
     return NextResponse.json({ success: true, responseId: response.id });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });

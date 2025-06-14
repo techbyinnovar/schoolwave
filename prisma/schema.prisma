@@ -125,6 +125,7 @@ model Form {
   id          String   @id @default(uuid())
   name        String
   description String?
+  bannerImage String?  // Optional: Banner/header image URL
   fields      Json     // JSON structure for dynamic fields
   stageId     String?  // Optional: assign leads to stage on submission
   stage       Stage?   @relation("StageForms", fields: [stageId], references: [id])
@@ -168,7 +169,7 @@ model Lead {
   name               String    // From form
   phone              String    // From form
   email              String    @unique // From form
-  schoolName         String    // From form
+  schoolName         String?   // From form, now optional
   numberOfStudents   String?   // NEW: From form (optional in model if not always required elsewhere)
   howHeard           String?   // NEW: From form (optional in model if not always required elsewhere)
   
