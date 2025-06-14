@@ -9,12 +9,12 @@ export async function GET(req: NextRequest) {
   const id = searchParams.get('id');
   const role = searchParams.get('role');
   if (id) {
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, email: true, name: true, role: true, createdAt: true, referralCode: true } });
     return NextResponse.json({ user });
   }
   // Convert role string to enum if present
   const where = role ? { role: role as any } : undefined;
-  const users = await prisma.user.findMany({ where });
+  const users = await prisma.user.findMany({ where, select: { id: true, email: true, name: true, role: true, createdAt: true, referralCode: true } });
   return NextResponse.json({ result: { data: users } });
 }
 

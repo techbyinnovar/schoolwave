@@ -13,6 +13,7 @@ interface LeadDetail {
   address: string;
   createdAt: string;
   stage: { id: string; name: string } | null;
+  ownedBy?: { id: string; name: string | null; email: string | null } | null;
   notes: Note[];
   history: LeadHistory[];
 }
@@ -117,6 +118,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             <div><b>Email:</b> {lead.email}</div>
             <div><b>Address:</b> {lead.address}</div>
             <div><b>Stage:</b> {lead.stage?.name || "-"}</div>
+            <div><b>Owner (Agent):</b> {lead.ownedBy ? `${lead.ownedBy.name || lead.ownedBy.email || lead.ownedBy.id}` : <span className="text-gray-400 italic">Unassigned</span>}</div>
             <div><b>Created At:</b> {new Date(lead.createdAt).toLocaleString()}</div>
           </div>
 

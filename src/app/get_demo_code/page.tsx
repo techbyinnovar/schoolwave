@@ -40,6 +40,12 @@ export default function GetDemoCodePage() {
   // Redirect if demo_code and leadId are present
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Store referral code from URL if present
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref');
+      if (ref) {
+        localStorage.setItem('referral_code', ref);
+      }
       const demoCode = localStorage.getItem('demo_code');
       const leadId = localStorage.getItem('leadId');
       if (demoCode && leadId) {
@@ -91,10 +97,13 @@ export default function GetDemoCodePage() {
     }
 
     try {
+      // Attach referral_code from localStorage if present
+      const referralCode = typeof window !== 'undefined' ? localStorage.getItem('referral_code') : null;
+      const payload = referralCode ? { ...formData, referralCode } : formData;
       const response = await fetch('/api/leads/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();

@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, FormEvent, ReactNode } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import AdminSidebar from '@/components/AdminSidebar';
 import { useSession } from "next-auth/react";
+import LeadTable from './LeadTable';
 
 
 // Define the Lead type
@@ -13,9 +14,11 @@ export type Lead = {
   phone: string;
   email: string;
   address: string;
-  demoCode?: string | null; // Added demoCode
+  demoCode?: string | null;
   assignedTo?: string | null;
   agent?: { id: string; name?: string | null; email: string } | null;
+  ownedById?: string | null;
+  ownedBy?: { id: string; name?: string | null; email: string | null } | null;
   stage?: string | { name: string };
 };
 
@@ -47,6 +50,15 @@ export default function AdminCrmPage() {
 
   const [tab, setTab] = useState<'leads' | 'stages'>('leads');
   const [leads, setLeads] = useState<Lead[]>([]);
+
+  // Log ownedBy details for debugging
+  useEffect(() => {
+    if (leads && leads.length > 0) {
+      leads.forEach((lead) => {
+        console.log(`[LEAD DEBUG] Lead: ${lead.id}, ownedBy:`, lead.ownedBy);
+      });
+    }
+  }, [leads]);
   const [agents, setAgents] = useState<{ id: string; name?: string; email: string }[]>([]);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<Omit<Lead, "id">>({
@@ -56,6 +68,7 @@ export default function AdminCrmPage() {
     email: "",
     address: "",
     assignedTo: null,
+    ownedById: null,
     stage: "",
   });
   const [editId, setEditId] = useState<string | null>(null);
@@ -198,7 +211,7 @@ export default function AdminCrmPage() {
         });
       }
       if (!res.ok) throw new Error("Failed to save lead");
-      setForm({ schoolName: "", name: "", phone: "", email: "", address: "", assignedTo: null, stage: stages[0]?.name ?? "" });
+      setForm({ schoolName: "", name: "", phone: "", email: "", address: "", assignedTo: null, ownedById: null, stage: stages[0]?.name ?? "" });
       setEditId(null);
       setModalOpen(false);
       // Refresh leads
@@ -427,124 +440,7 @@ export default function AdminCrmPage() {
             <button className={`px-4 py-2 rounded font-semibold ${tab === 'stages' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`} onClick={() => setTab('stages')}>Kanban Board</button>
           </div>
           {tab === 'leads' && (
-            <>
-              <div className="bg-white rounded-lg shadow p-6 mb-8">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search leads..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="border px-2 py-1 rounded w-full md:w-64"
-                  />
-                  <button onClick={openCreateModal} className="bg-blue-600 text-white px-4 py-2 rounded font-semibold">+ Add Lead</button>
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedLeads(filteredLeads.map(l => l.id));
-                      } else {
-                        setSelectedLeads([]);
-                      }
-                    }}
-                  />
-                  <span>Select All</span>
-                  <select value={assignAgentId} onChange={e => setAssignAgentId(e.target.value)} className="border px-2 py-1 rounded ml-4">
-                    <option value="">Assign to Agent</option>
-                    {agents.map(agent => (
-                      <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleBulkAssign}
-                    disabled={selectedLeads.length === 0 || !assignAgentId || loading}
-                    className="bg-blue-600 text-white px-3 py-1 rounded font-semibold ml-2"
-                  >Assign</button>
-                  <div className="flex gap-2 mb-2">
-                    {Object.entries(visibleColumns).map(([col, visible]) => (
-                      <label key={col} className="flex items-center gap-1">
-                        <input type="checkbox" checked={visible} onChange={() => setVisibleColumns(v => ({ ...v, [col as LeadColumnKey]: !v[col as LeadColumnKey] }))} />
-                        <span className="capitalize">{col === 'agent' ? 'Assigned Agent' : col}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <table className="min-w-full bg-white rounded shadow overflow-hidden">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 w-8"></th>
-                    {visibleColumns.schoolName && <th className="px-4 py-2">School Name</th>}
-                    {visibleColumns.name && <th className="px-4 py-2">Name</th>}
-                    {visibleColumns.phone && <th className="px-4 py-2">Phone</th>}
-                    {visibleColumns.email && <th className="px-4 py-2">Email</th>}
-                    {visibleColumns.address && <th className="px-4 py-2">Address</th>}
-                    {visibleColumns.stage && <th className="px-4 py-2">Stage</th>}
-                    {visibleColumns.agent && <th className="px-4 py-2">Assigned Agent</th>}
-                    {visibleColumns.demoCode && <th className="px-4 py-2">Demo Code</th>}
-                    {visibleColumns.actions && <th className="px-4 py-2">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLeads.map(lead => (
-                    <tr key={lead.id} className="hover:bg-blue-50">
-                      <td className="border px-4 py-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedLeads.includes(lead.id)}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setSelectedLeads(prev => [...prev, lead.id]);
-                            } else {
-                              setSelectedLeads(prev => prev.filter(id => id !== lead.id));
-                            }
-                          }}
-                        />
-                      </td>
-                      {visibleColumns.schoolName && (
-                        <td className="border px-4 py-2">
-                          <span
-                            className="text-blue-700 hover:underline cursor-pointer"
-                            onClick={e => {
-                              e.stopPropagation();
-                              window.location.href = `/admin/crm/lead/${lead.id}`;
-                            }}
-                          >
-                            {lead.schoolName}
-                          </span>
-                        </td>
-                      )}
-                      {visibleColumns.name && (
-                        <td className="border px-4 py-2">
-                          <span
-                            className="text-blue-700 hover:underline cursor-pointer"
-                            onClick={e => {
-                              e.stopPropagation();
-                              window.location.href = `/admin/crm/lead/${lead.id}`;
-                            }}
-                          >
-                            {lead.name}
-                          </span>
-                        </td>
-                      )}
-                      {visibleColumns.phone && <td className="border px-4 py-2">{lead.phone}</td>}
-                      {visibleColumns.email && <td className="border px-4 py-2">{lead.email}</td>}
-                      {visibleColumns.address && <td className="border px-4 py-2">{lead.address}</td>}
-                      {visibleColumns.stage && <td className="border px-4 py-2">{getStageName(lead.stage)}</td>}
-                      {visibleColumns.agent && <td className="border px-4 py-2">{lead.agent ? `${lead.agent.name ?? lead.agent.email}` : <span className="italic text-gray-400">Unassigned</span>}</td>}
-                      {visibleColumns.demoCode && <td className="border px-4 py-2">{lead.demoCode ?? <span className="italic text-gray-400">N/A</span>}</td>}
-                      {visibleColumns.actions && <td className="border px-4 py-2">
-                        <button onClick={e => { e.stopPropagation(); handleEdit(lead); }} className="text-blue-600 hover:underline mr-2">Edit</button>
-                        <button onClick={e => { e.stopPropagation(); handleDelete(lead.id); }} className="text-red-600 hover:underline">Delete</button>
-                      </td>}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
+            <LeadTable leads={leads} agents={agents} stages={stages} />
           )}
           {tab === 'stages' && (
             <div className="overflow-x-auto">
