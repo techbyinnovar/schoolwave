@@ -9,7 +9,7 @@ const leadSchema = z.object({
   name: z.string().min(1, { message: 'Name is required' }),
   phone: z.string().min(1, { message: 'Phone number is required' }),
   email: z.string().email({ message: 'Invalid email address' }),
-  schoolName: z.string().min(1, { message: 'School name is required' }),
+  schoolName: z.string().optional(),
   numberOfStudents: z.string().min(1, { message: 'Number of students is required' }),
   howHeard: z.string().min(1, { message: 'This field is required' }),
 });

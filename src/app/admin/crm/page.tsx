@@ -50,7 +50,7 @@ export default function AdminCrmPage() {
   const [agents, setAgents] = useState<{ id: string; name?: string; email: string }[]>([]);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<Omit<Lead, "id">>({
-    schoolName: "",
+    schoolName: "", // optional
     name: "",
     phone: "",
     email: "",
@@ -255,11 +255,11 @@ export default function AdminCrmPage() {
     const q = search.trim().toLowerCase();
     return visibleLeads.filter(
       (l) =>
-        l.schoolName.toLowerCase().includes(q) ||
-        l.name.toLowerCase().includes(q) ||
-        l.phone.toLowerCase().includes(q) ||
-        l.email.toLowerCase().includes(q) ||
-        l.address.toLowerCase().includes(q)
+        (l.schoolName ?? '').toLowerCase().includes(q) ||
+        (l.name ?? '').toLowerCase().includes(q) ||
+        (l.phone ?? '').toLowerCase().includes(q) ||
+        (l.email ?? '').toLowerCase().includes(q) ||
+        (l.address ?? '').toLowerCase().includes(q)
     );
   }, [search, visibleLeads]);
 
