@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from 'prisma/client';
+import { prisma } from '@/prisma/client';
 
 // POST /api/form_responses - submit a response to a form (public endpoint)
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
     // Find or create lead by email
+    // Validate required fields
+    const requiredFields = ['name', 'email', 'phone'];
+    for (const field of requiredFields) {
+      if (!data[field] || typeof data[field] !== 'string' || data[field].trim() === '') {
+        return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
+      }
+    }
     let lead = await prisma.lead.findUnique({ where: { email: data.email } });
     if (!lead) {
       lead = await prisma.lead.create({
@@ -22,11 +29,14 @@ export async function POST(req: NextRequest) {
       await prisma.lead.update({ where: { id: lead.id }, data: { stageId: data.stageId } });
     }
     // Store response
+    if (!data.responseData || typeof data.responseData !== 'object') {
+      return NextResponse.json({ error: 'Missing or invalid response data' }, { status: 400 });
+    }
     const response = await prisma.formResponse.create({
       data: {
         formId: data.formId,
         leadId: lead.id,
-        responseData: data.responseData,
+        response: data.responseData,
       },
     });
     return NextResponse.json({ success: true, responseId: response.id });

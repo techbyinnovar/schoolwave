@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from 'prisma/client';
+import { prisma } from '@/prisma/client';
 
 // GET /api/forms - list all forms
 export async function GET() {

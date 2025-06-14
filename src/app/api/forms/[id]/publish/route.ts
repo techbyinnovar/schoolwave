@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from 'prisma/client';
+import { prisma } from '@/prisma/client';
 
 // PATCH /api/forms/[id]/publish - publish/unpublish a form
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

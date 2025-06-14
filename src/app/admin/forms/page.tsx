@@ -58,6 +58,7 @@ export default function FormsAdminPage() {
                 <td>{form._count?.responses ?? 0}</td>
                 <td>
                   <Link href={`/admin/forms/${form.id}/edit`} className="btn btn-xs btn-secondary mr-2">Edit</Link>
+                  <Link href={`/f/${form.id}`} className="btn btn-xs btn-accent" target="_blank" rel="noopener noreferrer">View Public Page</Link>
                   <Link href={`/admin/forms/${form.id}/responses`} className="btn btn-xs">Responses</Link>
                 </td>
               </tr>
