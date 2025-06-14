@@ -1,3 +1,4 @@
+'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -5,7 +6,7 @@ export default function NewFormPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [fields, setFields] = useState('[{"label":"Email","type":"email","name":"email","required":true}]');
+  const [fields, setFields] = useState('[\n  {"label": "Name", "type": "text", "name": "name", "required": true},\n  {"label": "Email", "type": "email", "name": "email", "required": true},\n  {"label": "Phone", "type": "text", "name": "phone", "required": true},\n  {"label": "School Name", "type": "text", "name": "schoolName", "required": false}\n]');
   const [stageId, setStageId] = useState('');
   const [published, setPublished] = useState(false);
   const [error, setError] = useState('');
