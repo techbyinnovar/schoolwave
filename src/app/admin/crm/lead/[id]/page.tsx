@@ -4,6 +4,10 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
 
+type Agent = { id: string; name?: string | null; email: string };
+type Stage = { id: string; name: string };
+
+
 interface LeadDetail {
   id: string;
   schoolName: string;
@@ -49,13 +53,33 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   const [actionNote, setActionNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Fetch lead details
+  // --- Role-based editing state ---
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [editOwner, setEditOwner] = useState<string | null>(null);
+  const [editAssigned, setEditAssigned] = useState<string | null>(null);
+  const [editStage, setEditStage] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editError, setEditError] = useState<string>("");
+  const userRole = session?.user?.role;
+  const userId = session?.user?.id;
+
+  // Fetch agents, stages, and lead details
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/lead/${params.id}`)
-      .then(res => res.json())
-      .then(data => setLead(data.result?.data ?? null))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch(`/api/user?role=AGENT`).then(res => res.json()),
+      fetch(`/api/stage`).then(res => res.json()),
+      fetch(`/api/lead/${params.id}`).then(res => res.json())
+    ]).then(([agentRes, stageRes, leadRes]) => {
+      setAgents(agentRes.result?.data ?? []);
+      setStages(stageRes.result?.data ?? []);
+      setLead(leadRes.result?.data ?? null);
+      // Pre-fill edit fields
+      setEditOwner(leadRes.result?.data?.ownedBy?.id || null);
+      setEditAssigned(leadRes.result?.data?.agent?.id || null);
+      setEditStage(leadRes.result?.data?.stage?.id || null);
+    }).finally(() => setLoading(false));
   }, [params.id]);
 
   // Add note
@@ -106,6 +130,41 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   if (loading) return <div>Loading lead details...</div>;
   if (!lead) return <div>Lead not found.</div>;
 
+  // --- Role-based editing UI ---
+  const canEditOwner = userRole === "ADMIN";
+  const canEditAssigned = userRole === "ADMIN";
+  const canEditStage = userRole === "ADMIN" || userRole === "AGENT";
+  const fieldsChanged = (
+    (canEditOwner && editOwner !== (lead.ownedBy?.id || null)) ||
+    (canEditAssigned && editAssigned !== (lead.agent?.id || null)) ||
+    (canEditStage && editStage !== (lead.stage?.id || null))
+  );
+
+  const handleEditSave = async () => {
+    setSaving(true);
+    setEditError("");
+    try {
+      const payload: any = { id: lead.id };
+      if (canEditOwner) payload.ownedById = editOwner || null;
+      if (canEditAssigned) payload.assignedTo = editAssigned || null;
+      if (canEditStage) payload.stageId = editStage || null;
+      const res = await fetch(`/api/lead/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to update lead");
+      // Refresh lead
+      const data = await res.json();
+      setLead(data.result?.data ?? null);
+      setEditMode(false);
+    } catch (e: any) {
+      setEditError(e.message || "Failed to update lead");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex bg-gray-100">
       <main className="flex-1 p-8">
@@ -117,9 +176,79 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             <div><b>Phone:</b> {lead.phone}</div>
             <div><b>Email:</b> {lead.email}</div>
             <div><b>Address:</b> {lead.address}</div>
-            <div><b>Stage:</b> {lead.stage?.name || "-"}</div>
-            <div><b>Owner (Agent):</b> {lead.ownedBy ? `${lead.ownedBy.name || lead.ownedBy.email || lead.ownedBy.id}` : <span className="text-gray-400 italic">Unassigned</span>}</div>
+            <div className="flex items-center gap-2">
+              <b>Stage:</b>
+              {canEditStage && editMode ? (
+                <select
+                  value={editStage || ""}
+                  onChange={e => setEditStage(e.target.value || null)}
+                  className="border rounded px-2 py-1"
+                  disabled={saving}
+                >
+                  <option value="">Unassigned</option>
+                  {stages.map(stage => (
+                    <option key={stage.id} value={stage.id}>{stage.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <span>{lead.stage?.name || <span className="text-gray-400 italic">Unassigned</span>}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <b>Owner (Agent):</b>
+              {canEditOwner && editMode ? (
+                <select
+                  value={editOwner || ""}
+                  onChange={e => setEditOwner(e.target.value || null)}
+                  className="border rounded px-2 py-1"
+                  disabled={saving}
+                >
+                  <option value="">Unassigned</option>
+                  {agents.map(agent => (
+                    <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
+                  ))}
+                </select>
+              ) : (
+                lead.ownedBy ? `${lead.ownedBy.name || lead.ownedBy.email || lead.ownedBy.id}` : <span className="text-gray-400 italic">Unassigned</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <b>Assigned Agent:</b>
+              {canEditAssigned && editMode ? (
+                <select
+                  value={editAssigned || ""}
+                  onChange={e => setEditAssigned(e.target.value || null)}
+                  className="border rounded px-2 py-1"
+                  disabled={saving}
+                >
+                  <option value="">Unassigned</option>
+                  {agents.map(agent => (
+                    <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
+                  ))}
+                </select>
+              ) : (
+                lead.agent ? `${lead.agent.name || lead.agent.email || lead.agent.id}` : <span className="text-gray-400 italic">Unassigned</span>
+              )}
+            </div>
             <div><b>Created At:</b> {new Date(lead.createdAt).toLocaleString()}</div>
+            {(canEditOwner || canEditAssigned || canEditStage) && (
+              <div className="mt-2 flex gap-2">
+                {!editMode ? (
+                  <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => setEditMode(true)} disabled={saving}>Edit</button>
+                ) : (
+                  <>
+                    <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={handleEditSave} disabled={saving || !fieldsChanged}>Save</button>
+                    <button className="bg-gray-400 text-white px-3 py-1 rounded" onClick={() => {
+                      setEditMode(false);
+                      setEditOwner(lead.ownedBy?.id || null);
+                      setEditAssigned(lead.agent?.id || null);
+                      setEditStage(lead.stage?.id || null);
+                    }} disabled={saving}>Cancel</button>
+                  </>
+                )}
+                {editError && <span className="text-red-500 ml-2">{editError}</span>}
+              </div>
+            )}
           </div>
 
           {/* Collapsible Stage & Action History */}

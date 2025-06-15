@@ -4,14 +4,32 @@ import { db as prisma } from '@/lib/db';
 import { sendTemplateToLead } from './sendTemplateToLead';
 
 
+import { auth } from '@/auth';
+
 export async function GET(req: NextRequest) {
+  const session = await auth();
+  const role = session?.user?.role;
+  const userId = session?.user?.id;
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (id) {
     const lead = await prisma.lead.findUnique({ where: { id } });
     return NextResponse.json({ lead });
   }
-  const leads = await prisma.lead.findMany({ include: { agent: true, ownedBy: true, stage: true } });
+  let leads;
+  if (role === "AGENT" && userId) {
+    leads = await prisma.lead.findMany({
+      where: {
+        OR: [
+          { assignedTo: userId },
+          { ownedById: userId }
+        ]
+      },
+      include: { agent: true, ownedBy: true, stage: true }
+    });
+  } else {
+    leads = await prisma.lead.findMany({ include: { agent: true, ownedBy: true, stage: true } });
+  }
   return NextResponse.json({ result: { data: leads } });
 }
 
@@ -85,6 +103,32 @@ export async function PATCH(req: NextRequest) {
 
   const lead = await prisma.lead.update({ where: { id }, data: filteredUpdate, include: { agent: true, ownedBy: true, stage: true } });
 
+  // Log a note about the update (diff)
+  try {
+    const session = await auth();
+    const userId = session?.user?.id || null;
+    const changedFields: string[] = [];
+    const changes: string[] = [];
+    for (const key of Object.keys(filteredUpdate)) {
+      if (prevLead && prevLead[key] !== filteredUpdate[key]) {
+        changedFields.push(key);
+        changes.push(`${key}: '${prevLead[key] ?? ''}' → '${filteredUpdate[key] ?? ''}'`);
+      }
+    }
+    if (changedFields.length > 0) {
+      const content = `Lead updated.\n${changes.join("\n")}`;
+      await prisma.note.create({
+        data: {
+          leadId: id,
+          content,
+          userId,
+        },
+      });
+    }
+  } catch (err) {
+    console.error('[Lead Update Note Error]', err);
+  }
+
   // If stageId changed, and new stage has defaultTemplateId, send template
   if (update.stageId && update.stageId !== prevStageId) {
     const stage = await prisma.stage.findUnique({ where: { id: update.stageId }, include: { defaultTemplate: true } });
@@ -105,6 +149,11 @@ export async function PATCH(req: NextRequest) {
 
 
 export async function DELETE(req: NextRequest) {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (!session || role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   const data = await req.json();
   const { id } = data;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });

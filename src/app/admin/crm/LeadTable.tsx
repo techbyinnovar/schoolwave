@@ -1,14 +1,17 @@
 "use client";
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Lead } from "./page";
 
 interface LeadTableProps {
   leads: Lead[];
   agents: { id: string; name?: string; email: string }[];
   stages: { id: string; name: string }[];
+  userRole: string | undefined;
 }
 
-export default function LeadTable({ leads, agents, stages }: LeadTableProps) {
+export default function LeadTable({ leads, agents, stages, userRole }: LeadTableProps) {
+  const router = useRouter();
   // Filter state
   const [search, setSearch] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<string>("");
@@ -22,7 +25,7 @@ export default function LeadTable({ leads, agents, stages }: LeadTableProps) {
         search.trim() === "" ||
         [lead.schoolName, lead.name, lead.phone, lead.email, lead.address]
           .filter(Boolean)
-          .some((val) => val!.toLowerCase().includes(search.toLowerCase()));
+          .some((val) => val && val.toLowerCase().includes(search.toLowerCase()));
       const matchesOwner =
         !ownerFilter || lead.ownedById === ownerFilter;
       const matchesAssigned =
@@ -107,20 +110,29 @@ export default function LeadTable({ leads, agents, stages }: LeadTableProps) {
               </tr>
             ) : (
               filteredLeads.map(lead => (
-                <tr key={lead.id} className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <td className="border px-4 py-2">{lead.schoolName}</td>
-                  <td className="border px-4 py-2">{lead.name}</td>
-                  <td className="border px-4 py-2">{lead.phone}</td>
-                  <td className="border px-4 py-2">{lead.email}</td>
-                  <td className="border px-4 py-2">{lead.address}</td>
-                  <td className="border px-4 py-2">{typeof lead.stage === "object" ? lead.stage?.name : lead.stage}</td>
-                  <td className="border px-4 py-2">{lead.ownedBy ? (lead.ownedBy.name || lead.ownedBy.email) : <span className="italic text-gray-400">Unassigned</span>}</td>
-                  <td className="border px-4 py-2">{lead.agent ? (lead.agent.name || lead.agent.email) : <span className="italic text-gray-400">Unassigned</span>}</td>
-                  <td className="border px-4 py-2">{lead.demoCode ?? <span className="italic text-gray-400">N/A</span>}</td>
+                <tr
+                  key={lead.id}
+                  className="hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors cursor-pointer group"
+                  onClick={e => {
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    router.push(`/admin/crm/lead/${lead.id}`);
+                  }}
+                >
+                  <td className="border px-4 py-2 group-hover:font-semibold">{lead.schoolName}</td>
+                  <td className="border px-4 py-2 group-hover:font-semibold">{lead.name}</td>
+                  <td className="border px-4 py-2 group-hover:font-semibold">{lead.phone}</td>
+                  <td className="border px-4 py-2 group-hover:font-semibold">{lead.email}</td>
+                  <td className="border px-4 py-2 group-hover:font-semibold">{lead.address}</td>
+                  <td className="border px-4 py-2 group-hover:font-semibold">{typeof lead.stage === "object" ? lead.stage?.name : lead.stage}</td>
+                  <td className="border px-4 py-2 group-hover:font-semibold">{lead.ownedBy ? (lead.ownedBy.name || lead.ownedBy.email) : <span className="italic text-gray-400">Unassigned</span>}</td>
+                  <td className="border px-4 py-2 group-hover:font-semibold">{lead.agent ? (lead.agent.name || lead.agent.email) : <span className="italic text-gray-400">Unassigned</span>}</td>
+                  <td className="border px-4 py-2 group-hover:font-semibold">{lead.demoCode ?? <span className="italic text-gray-400">N/A</span>}</td>
                   <td className="border px-4 py-2">
                     {/* You can add Edit/Delete/View buttons here */}
                     <button className="text-blue-600 hover:underline mr-2">Edit</button>
-                    <button className="text-red-600 hover:underline">Delete</button>
+                    {userRole !== "AGENT" && (
+                      <button className="text-red-600 hover:underline">Delete</button>
+                    )}
                   </td>
                 </tr>
               ))

@@ -15,7 +15,14 @@ export default function AdminSidebar() {
         {role === "AGENT" ? (
           <>
             <Link href="/admin/crm" className="text-blue-700 font-semibold hover:underline">CRM</Link>
-            <Link href="/admin/messages" className="text-gray-800 hover:text-blue-700">Messages</Link>
+            <Link href="/admin/agent/demo" className="text-gray-800 hover:text-blue-700 font-semibold">View Demo</Link>
+          </>
+        ) : role === "CONTENT_ADMIN" ? (
+          <>
+            <Link href="/admin/blogs" className="text-gray-800 hover:text-blue-700">Blog</Link>
+            <Link href="/admin/webinars" className="text-gray-800 hover:text-blue-700">Webinars</Link>
+            <Link href="/admin/demos" className="text-gray-800 hover:text-blue-700 font-semibold">Demo Management</Link>
+            <Link href="/admin/agent/demo" className="text-gray-800 hover:text-blue-700 font-semibold">View Demo</Link>
           </>
         ) : (
           <>
@@ -30,7 +37,8 @@ export default function AdminSidebar() {
             <Link href="/admin/subscription" className="text-gray-800 hover:text-blue-700">Subscriptions</Link>
             <Link href="/admin/requests" className="text-gray-800 hover:text-blue-700 font-semibold">Requests</Link>
             <Link href="/admin/forms" className="text-gray-800 hover:text-blue-700 font-semibold">Forms</Link>
-            <Link href="/admin/demos" className="text-gray-800 hover:text-blue-700 font-semibold">Demo</Link>
+            <Link href="/admin/demos" className="text-gray-800 hover:text-blue-700 font-semibold">Demo Management</Link>
+            <Link href="/admin/agent/demo" className="text-gray-800 hover:text-blue-700 font-semibold">View Demo</Link>
             <Link href="/admin/settings" className="text-gray-800 hover:text-blue-700">Settings</Link>
             <Link href="/admin/messages" className="text-gray-800 hover:text-blue-700">Messages</Link>
           </>

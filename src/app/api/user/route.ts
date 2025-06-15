@@ -33,6 +33,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ user });
   } else {
     // Create new user
+    // If role is AGENT and no referralCode provided, auto-generate one
+    if (data.role === 'AGENT' && !data.referralCode) {
+      let code: string;
+      let exists = true;
+      let attempts = 0;
+      do {
+        code = String(Math.floor(100000 + Math.random() * 900000)).padStart(6, '0');
+        exists = !!(await prisma.user.findFirst({ where: { referralCode: code } }));
+        attempts++;
+        if (attempts > 10) throw new Error('Could not generate unique referral code for agent.');
+      } while (exists);
+      data.referralCode = code;
+    }
     const user = await prisma.user.create({ data });
     return NextResponse.json({ user });
   }

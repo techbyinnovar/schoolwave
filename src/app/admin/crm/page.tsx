@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, FormEvent, ReactNode } from "react";
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import AdminSidebar from '@/components/AdminSidebar';
 import { useSession } from "next-auth/react";
 import LeadTable from './LeadTable';
@@ -59,8 +59,12 @@ export default function AdminCrmPage() {
       });
     }
   }, [leads]);
+
   const [agents, setAgents] = useState<{ id: string; name?: string; email: string }[]>([]);
   const [search, setSearch] = useState("");
+const [ownerFilter, setOwnerFilter] = useState<string>("");
+const [assignedFilter, setAssignedFilter] = useState<string>("");
+const [stageFilter, setStageFilter] = useState<string>("");
   const [form, setForm] = useState<Omit<Lead, "id">>({
     schoolName: "", // optional
     name: "",
@@ -95,10 +99,10 @@ export default function AdminCrmPage() {
     actions: true,
   });
 
-  // Only show assigned leads if agent, otherwise show all
+  // Only show leads owned by or assigned to agent, otherwise show all
   const visibleLeads = useMemo(() => {
     if (userRole === "AGENT" && userId) {
-      return leads.filter(lead => lead.assignedTo === userId);
+      return leads.filter(lead => lead.assignedTo === userId || lead.ownedById === userId);
     }
     return leads;
   }, [leads, userRole, userId]);
@@ -203,7 +207,11 @@ export default function AdminCrmPage() {
         });
       } else {
         // Create new lead
-        const payload = { ...form, stageId };
+        let payload = { ...form, stageId };
+        if (userRole === "AGENT" && userId) {
+          payload.ownedById = userId;
+          payload.assignedTo = userId;
+        }
         res = await fetch(`/api/lead`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -258,7 +266,29 @@ export default function AdminCrmPage() {
   // Open modal for new lead
   const openCreateModal = () => {
     setEditId(null);
-    setForm({ schoolName: "", name: "", phone: "", email: "", address: "", assignedTo: null, stage: stages[0]?.name ?? "" });
+    if (userRole === "AGENT" && userId) {
+      setForm({
+        schoolName: "",
+        name: "",
+        phone: "",
+        email: "",
+        address: "",
+        assignedTo: userId,
+        ownedById: userId,
+        stage: stages[0]?.name ?? ""
+      });
+    } else {
+      setForm({
+        schoolName: "",
+        name: "",
+        phone: "",
+        email: "",
+        address: "",
+        assignedTo: null,
+        ownedById: null,
+        stage: stages[0]?.name ?? ""
+      });
+    }
     setModalOpen(true);
   };
 
@@ -282,27 +312,28 @@ export default function AdminCrmPage() {
     if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) return;
     const sourceStage = source.droppableId;
     const destStage = destination.droppableId;
-    const movedLead = kanbanLeads[sourceStage][source.index];
     // Find the stageId for the destination stage
     const destStageObj = stages.find(s => s.name === destStage);
     if (!destStageObj) return;
-    // Optimistic update
+    // Optimistic UI update
     const updatedKanban = { ...kanbanLeads };
     updatedKanban[sourceStage] = [...updatedKanban[sourceStage]];
     updatedKanban[destStage] = [...updatedKanban[destStage]];
     const [removed] = updatedKanban[sourceStage].splice(source.index, 1);
-    removed.stage = destStageObj.name; // ensure UI reflects new stage
-    updatedKanban[destStage].splice(destination.index, 0, removed);
-    setKanbanLeads(updatedKanban);
-    // Update in DB
+    if (removed) {
+      removed.stage = { name: destStageObj.name }; // ensure UI reflects new stage
+      updatedKanban[destStage].splice(destination.index, 0, removed);
+      setKanbanLeads(updatedKanban);
+    }
     setLoading(true);
     try {
+      // Persist stage change to backend using PATCH with id and stageId
       await fetch("/api/lead", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: draggableId, stageId: destStageObj.id }),
       });
-      // Refresh leads
+      // Always refresh leads from backend after move
       fetch("/api/lead")
         .then(res => res.json())
         .then(data => setLeads(data.result?.data ?? []));
@@ -311,6 +342,7 @@ export default function AdminCrmPage() {
     }
     setLoading(false);
   };
+
 
   // Bulk assign handler
   const handleBulkAssign = async () => {
@@ -440,10 +472,63 @@ export default function AdminCrmPage() {
             <button className={`px-4 py-2 rounded font-semibold ${tab === 'stages' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`} onClick={() => setTab('stages')}>Kanban Board</button>
           </div>
           {tab === 'leads' && (
-            <LeadTable leads={leads} agents={agents} stages={stages} />
+            <>
+              <div className="flex justify-end mb-4">
+                <button
+                  className="bg-blue-600 text-white px-4 py-2 rounded font-semibold shadow hover:bg-blue-700 transition"
+                  onClick={openCreateModal}
+                >
+                  + Create Lead
+                </button>
+              </div>
+              <LeadTable leads={filteredLeads} agents={agents} stages={stages} userRole={userRole} />
+            </>
           )}
           {tab === 'stages' && (
             <div className="overflow-x-auto">
+              <div className="flex flex-wrap gap-4 mb-4 items-center">
+                {userRole === "AGENT" && (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Search leads..."
+                      className="border rounded px-3 py-2 flex-1 min-w-[180px]"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                    />
+                    <select
+                      className="border rounded px-3 py-2"
+                      value={ownerFilter}
+                      onChange={e => setOwnerFilter(e.target.value)}
+                    >
+                      <option value="">All Owners</option>
+                      {agents.map(agent => (
+                        <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="border rounded px-3 py-2"
+                      value={assignedFilter}
+                      onChange={e => setAssignedFilter(e.target.value)}
+                    >
+                      <option value="">All Assigned</option>
+                      {agents.map(agent => (
+                        <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+                <select
+                  className="border rounded px-3 py-2"
+                  value={stageFilter}
+                  onChange={e => setStageFilter(e.target.value)}
+                >
+                  <option value="">All Stages</option>
+                  {stages.map(stage => (
+                    <option key={stage.id} value={stage.name}>{stage.name}</option>
+                  ))}
+                </select>
+              </div>
               <div style={{ minHeight: '480px' }}>
                 <DragDropContext onDragEnd={onDragEnd}>
                   <div className="flex gap-6 min-w-[1200px]">
@@ -513,13 +598,17 @@ export default function AdminCrmPage() {
               <input type="text" placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="border px-2 py-1 rounded" required />
               <input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="border px-2 py-1 rounded" required />
               <input type="text" placeholder="Address" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className="border px-2 py-1 rounded" required />
-              <label className="text-sm font-semibold">Assign to Agent</label>
-              <select value={form.assignedTo ?? ""} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value || null }))} className="border px-2 py-1 rounded">
-                <option value="">Unassigned</option>
-                {agents.map(agent => (
-                  <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
-                ))}
-              </select>
+              {userRole === "ADMIN" && (
+                <>
+                  <label className="text-sm font-semibold">Assign to Agent</label>
+                  <select value={form.assignedTo ?? ""} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value || null }))} className="border px-2 py-1 rounded">
+                    <option value="">Unassigned</option>
+                    {agents.map(agent => (
+                      <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
+                    ))}
+                  </select>
+                </>
+              )}
               <label className="text-sm font-semibold">Stage</label>
               <select value={typeof form.stage === 'string' ? form.stage : form.stage?.name ?? ''} onChange={e => setForm(f => ({ ...f, stage: e.target.value }))} className="border px-2 py-1 rounded">
                 {stages.map(stage => (
@@ -645,13 +734,17 @@ export default function AdminCrmPage() {
               <input type="text" placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="border px-2 py-1 rounded" required />
               <input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="border px-2 py-1 rounded" required />
               <input type="text" placeholder="Address" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className="border px-2 py-1 rounded" required />
-              <label className="text-sm font-semibold">Assign to Agent</label>
-              <select value={form.assignedTo ?? ""} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value || null }))} className="border px-2 py-1 rounded">
-                <option value="">Unassigned</option>
-                {agents.map(agent => (
-                  <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
-                ))}
-              </select>
+              {userRole === "ADMIN" && (
+                <>
+                  <label className="text-sm font-semibold">Assign to Agent</label>
+                  <select value={form.assignedTo ?? ""} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value || null }))} className="border px-2 py-1 rounded">
+                    <option value="">Unassigned</option>
+                    {agents.map(agent => (
+                      <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
+                    ))}
+                  </select>
+                </>
+              )}
               <label className="text-sm font-semibold">Stage</label>
               <select value={typeof form.stage === 'string' ? form.stage : form.stage?.name ?? ''} onChange={e => setForm(f => ({ ...f, stage: e.target.value }))} className="border px-2 py-1 rounded">
                 {stages.map(stage => (
