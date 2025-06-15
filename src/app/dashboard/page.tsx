@@ -19,10 +19,10 @@ export default function DashboardPage() {
         router.replace("/admin");
         break;
       case "CONTENT_ADMIN":
-        router.replace("/cms");
+        router.replace("/admin");
         break;
       case "AGENT":
-        router.replace("/crm");
+        router.replace("/admin");
         break;
       default:
         router.replace("/login");
