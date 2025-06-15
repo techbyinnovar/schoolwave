@@ -97,7 +97,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   // Fetch previous lead to check for stage change
-  const prevLead = await prisma.lead.findUnique({ where: { id }, include: { agent: true, stage: true } });
+  const prevLead = await prisma.lead.findUnique({ where: { id }, include: { agent: true, stage: true } }) as Record<string, any> | null;
   const prevStageId = prevLead?.stageId;
   const newStageId = update.stageId || prevStageId;
 
@@ -110,9 +110,9 @@ export async function PATCH(req: NextRequest) {
     const changedFields: string[] = [];
     const changes: string[] = [];
     for (const key of Object.keys(filteredUpdate)) {
-      if (prevLead && prevLead[key] !== filteredUpdate[key]) {
+      if (prevLead && (prevLead as Record<string, any>)[key] !== filteredUpdate[key]) {
         changedFields.push(key);
-        changes.push(`${key}: '${prevLead[key] ?? ''}' → '${filteredUpdate[key] ?? ''}'`);
+        changes.push(`${key}: '${(prevLead as Record<string, any>)[key] ?? ''}' → '${filteredUpdate[key] ?? ''}'`);
       }
     }
     if (changedFields.length > 0) {
