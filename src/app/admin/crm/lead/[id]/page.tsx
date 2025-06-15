@@ -18,6 +18,7 @@ interface LeadDetail {
   createdAt: string;
   stage: { id: string; name: string } | null;
   ownedBy?: { id: string; name: string | null; email: string | null } | null;
+  agent?: { id: string; name?: string | null; email: string } | null;
   notes: Note[];
   history: LeadHistory[];
 }
