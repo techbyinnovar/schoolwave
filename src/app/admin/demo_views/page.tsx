@@ -13,6 +13,7 @@ interface DemoLead {
   howHeard?: string;
   demoCode?: string;
   demoLog?: any;
+  address?: string;
   createdAt: string;
 }
 
@@ -51,6 +52,9 @@ export default function DemoViewsPage() {
                 <th className="p-2 text-left">Email</th>
                 <th className="p-2 text-left">Phone</th>
                 <th className="p-2 text-left">School</th>
+                <th className="p-2 text-left"># Students</th>
+                <th className="p-2 text-left">How Heard</th>
+                <th className="p-2 text-left">Address</th>
                 <th className="p-2 text-left">Date</th>
                 <th className="p-2">Details</th>
               </tr>
@@ -62,6 +66,9 @@ export default function DemoViewsPage() {
                   <td className="p-2">{lead.email}</td>
                   <td className="p-2">{lead.phone}</td>
                   <td className="p-2">{lead.schoolName}</td>
+                  <td className="p-2">{lead.numberOfStudents || '-'}</td>
+                  <td className="p-2">{lead.howHeard || '-'}</td>
+                  <td className="p-2">{lead.address || '-'}</td>
                   <td className="p-2">{new Date(lead.createdAt).toLocaleDateString()}</td>
                   <td className="p-2 text-center">
                     <Link href={`/admin/demo_views/${lead.id}`} className="text-blue-600 hover:underline">View</Link>
