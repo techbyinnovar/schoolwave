@@ -2,6 +2,7 @@
 
 import { useEffect, useState, ComponentType } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 const DEMO_CODE_STORAGE_KEY = 'demo_code';
 const DEMO_2FA_PATH = '/demo_2fa';
@@ -17,12 +18,19 @@ export default function withDemoAuth<P extends object>(WrappedComponent: Compone
   const ComponentWithAuth = (props: P) => {
     const router = useRouter();
     const pathname = usePathname();
+    const { data: session, status } = useSession();
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
       // Ensure this runs only on the client
       if (typeof window !== 'undefined') {
+        // AGENTs bypass demo code check
+        if (session?.user?.role === 'AGENT') {
+          setIsAuthorized(true);
+          setIsLoading(false);
+          return;
+        }
         const demoCode = localStorage.getItem(DEMO_CODE_STORAGE_KEY);
         const isValidCode = demoCode && demoCode.trim() !== ''; // Simple presence check
 
@@ -41,7 +49,7 @@ export default function withDemoAuth<P extends object>(WrappedComponent: Compone
           setIsLoading(false);
         }
       }
-    }, [router, pathname]);
+    }, [router, pathname, session?.user?.role]);
 
     if (isLoading) {
       return <LoadingSpinner />;

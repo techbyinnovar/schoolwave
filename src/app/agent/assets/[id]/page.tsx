@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AdminSidebar from '@/components/AdminSidebar';
+import AssetPreviewCarousel from './AssetPreviewCarousel';
 
 const AssetDetailPage = () => {
   const params = useParams();
@@ -27,45 +28,17 @@ const AssetDetailPage = () => {
   return (
     <div className="flex min-h-screen bg-white">
       <AdminSidebar />
-      <main className="flex-1 max-w-2xl mx-auto py-8">
+      <main className="flex-1 max-w-[75%] mx-auto py-8">
         <h1 className="text-2xl font-bold mb-4">{asset.title}</h1>
         <div className="mb-4 text-gray-700 whitespace-pre-line">{asset.description}</div>
         <div className="mb-6">
           <h2 className="font-semibold mb-2">Files</h2>
-          {Array.isArray(asset.files) && asset.files.length > 0 ? (
-            <ul className="list-disc ml-6">
-              {asset.files.map((file: any, i: number) => (
-                <li key={i} className="flex items-center gap-2">
-                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                    {file.name || file.url}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const response = await fetch(file.url);
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = file.name || 'download';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                      } catch (err) {
-                        alert('Failed to download file.');
-                      }
-                    }}
-                    className="ml-2 px-2 py-1 rounded bg-indigo-600 text-white text-xs hover:bg-indigo-700 transition"
-                    title="Download file"
-                  >
-                    Download
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : <span className="text-gray-400">No files.</span>}
+          {/* Preview section for images and videos with modal carousel */}
+          {Array.isArray(asset.files) && asset.files.length > 0 && (
+            <AssetPreviewCarousel files={asset.files} />
+          )}
+
+
         </div>
         <div className="mb-6">
           <h2 className="font-semibold mb-2">Links</h2>
