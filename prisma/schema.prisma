@@ -23,6 +23,23 @@ model Blog {
   @@map("blogs")
 }
 
+model Asset {
+  id          String    @id @default(uuid())
+  title       String
+  description String    @db.Text
+  files       Json?     // Array of file objects: [{ url, name, type }]
+  links       Json?     // Array of link objects: [{ url, label }]
+  published   Boolean   @default(false)
+  createdById String
+  createdBy   User      @relation("UserAssets", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  // Optionally: tags, category, etc.
+  @@map("assets")
+}
+
+
+
 model Webinar {
   id              String    @id @default(cuid()) // Using cuid() for consistency if other models use it, or uuid()
   title           String
@@ -159,6 +176,7 @@ model User {
   updatedAt DateTime @updatedAt
   leads     Lead[]   @relation("AgentLeads")
   notes     Note[]   @relation("UserNotes")
+  assets    Asset[]  @relation("UserAssets")
   leadHistory LeadHistory[] @relation("UserLeadHistory")
   messageTemplates MessageTemplate[] 
   sentMessages Message[] @relation("SentMessages")

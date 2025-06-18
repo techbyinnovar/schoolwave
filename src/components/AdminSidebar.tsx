@@ -15,6 +15,7 @@ export default function AdminSidebar() {
         {role === "AGENT" ? (
           <>
             <Link href="/admin/crm" className="text-blue-700 font-semibold hover:underline">CRM</Link>
+            <Link href="/agent/assets" className="text-gray-800 hover:text-blue-700 font-semibold">Assets</Link>
             <Link href="/admin/agent/demo" className="text-gray-800 hover:text-blue-700 font-semibold">View Demo</Link>
           </>
         ) : role === "CONTENT_ADMIN" ? (
@@ -22,6 +23,7 @@ export default function AdminSidebar() {
             <Link href="/admin/blogs" className="text-gray-800 hover:text-blue-700">Blog</Link>
             <Link href="/admin/webinars" className="text-gray-800 hover:text-blue-700">Webinars</Link>
             <Link href="/admin/demos" className="text-gray-800 hover:text-blue-700 font-semibold">Demo Management</Link>
+            {/* No assets for content admin */}
             <Link href="/admin/agent/demo" className="text-gray-800 hover:text-blue-700 font-semibold">View Demo</Link>
           </>
         ) : (
@@ -29,6 +31,7 @@ export default function AdminSidebar() {
             <Link href="/admin" className="text-blue-700 font-semibold hover:underline">Dashboard</Link>
             <Link href="/admin/users" className="text-gray-800 hover:text-blue-700">Users</Link>
             <Link href="/admin/crm" className="text-gray-800 hover:text-blue-700">CRM</Link>
+            <Link href="/admin/assets" className="text-gray-800 hover:text-blue-700 font-semibold">Assets</Link>
             <Link href="/admin/blogs" className="text-gray-800 hover:text-blue-700">Blog</Link>
             <Link href="/admin/webinars" className="text-gray-800 hover:text-blue-700">Webinars</Link>
             <Link href="/admin/registrants" className="text-gray-800 hover:text-blue-700">Registrants</Link>
