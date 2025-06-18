@@ -69,6 +69,7 @@ const AdminAssetsPage = () => {
                   <td className="px-4 py-2 text-gray-700">{asset.createdBy?.name || asset.createdBy?.email || '—'}</td>
                   <td className="px-4 py-2 text-gray-500">{new Date(asset.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-2 flex gap-2">
+                    <Link href={`/agent/assets/${asset.id}`} className="text-indigo-600 hover:underline">View</Link>
                     <Link href={`/admin/assets/${asset.id}/edit`} className="text-blue-600 hover:underline">Edit</Link>
                     <button onClick={() => handleDelete(asset.id)} className="text-red-600 hover:underline">Delete</button>
                   </td>
