@@ -104,7 +104,7 @@ const EmailElement: React.FC<EmailElementProps> = ({ element, onUpdateElement, o
       case 'button':
         return (
           <div style={{ textAlign: styles.textAlign as any }}>
-            <button style={styles as React.CSSProperties}>
+            <button type="button" style={styles as React.CSSProperties}>
               {content}
             </button>
           </div>

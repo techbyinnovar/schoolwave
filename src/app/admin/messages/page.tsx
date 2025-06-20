@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import AdminSidebar from "@/components/AdminSidebar";
 import { useSession } from "next-auth/react";
 
 export default function MessagesAdminPage() {
@@ -51,7 +50,7 @@ export default function MessagesAdminPage() {
 
       <main className="flex-1 flex flex-col items-center justify-start p-8">
         <div className="w-full">
-          <div className="p-6 max-w-5xl mx-auto">
+          <div className="p-6 max-w-[90%] mx-auto">
             <div className="flex gap-4 mb-8 border-b">
               <button
                 className={`px-4 py-2 -mb-px border-b-2 ${activeTab === 'messages' ? 'border-blue-600 text-blue-700 font-bold' : 'border-transparent text-gray-500'}`}

@@ -1,6 +1,7 @@
 "use client";
 import React, { useRef, useState } from "react";
-import EmailBuilder from "@/components/EmailBuilder";
+import EmailEditor from "@/components/EmailEditor";
+import { cloudinaryUpload } from '@/utils/cloudinaryUpload';
 
 interface MessageTemplateFormProps {
   template?: any;
@@ -14,7 +15,8 @@ export default function MessageTemplateForm({ template, onSaved, onClose }: Mess
   const [name, setName] = useState(template?.name || "");
   const [subject, setSubject] = useState(template?.subject || "");
   const [emailHtml, setEmailHtml] = useState(template?.emailHtml || "");
-  // Removed emailDesign and Unlayer refs
+  const [emailDesign, setEmailDesign] = useState<object | null>(template?.emailDesign || null);
+  const emailEditorRef = useRef<any>(null);
 
   // For image URLs to embed in email body
   const [emailImages, setEmailImages] = useState<string[]>(template?.emailImages || []);
@@ -24,23 +26,30 @@ export default function MessageTemplateForm({ template, onSaved, onClose }: Mess
   const [whatsappImages, setWhatsappImages] = useState<string[]>(template?.whatsappImages || []);
   const [loading, setLoading] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
-  const emailEditorRef = React.useRef<any>(null);
   const emailAttachmentInput = useRef<HTMLInputElement>(null);
   const whatsappImageInput = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'base' | 'email' | 'whatsapp'>('base');
 
-  // Upload images for embedding in email body
+  // Upload images for embedding in email body (Cloudinary)
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files) return;
     const uploaded: string[] = [];
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !uploadPreset) {
+      setError('Cloudinary config missing');
+      return;
+    }
     for (const file of Array.from(files)) {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (data.url) uploaded.push(data.url);
+      try {
+        const result = await cloudinaryUpload(file, { cloudName, uploadPreset });
+        if (result.url) uploaded.push(result.url);
+      } catch (err) {
+        setError('Image upload failed');
+        console.error(err);
+      }
     }
     setEmailImages(prev => [...prev, ...uploaded]);
   }
@@ -80,14 +89,25 @@ export default function MessageTemplateForm({ template, onSaved, onClose }: Mess
     setSuccess(null);
 
     let htmlToSave = emailHtml;
-    // Use latest emailHtml from MinimalEmailEditor
-    // No Unlayer export logic needed
-    
+    let designToSave = emailDesign;
+
+    if (activeTab === 'email' && emailEditorRef.current) {
+      await new Promise<void>((resolve) => {
+        emailEditorRef.current.exportHtml((data: any) => {
+          setEmailHtml(data.html);
+          setEmailDesign(data.design);
+          htmlToSave = data.html;
+          designToSave = data.design;
+          resolve();
+        });
+      });
+    }
 
     const payload = {
       name,
       subject,
       emailHtml: htmlToSave,
+      emailDesign: designToSave,
       emailImages,
       whatsappText,
       whatsappImages,
@@ -161,7 +181,13 @@ export default function MessageTemplateForm({ template, onSaved, onClose }: Mess
     <div className="flex-1">
       <div className="mb-4">
         <label className="block font-semibold mb-1">Email Body</label>
-        <EmailBuilder onExportHTML={setEmailHtml} initialHtml={template?.emailHtml} />
+        <EmailEditor
+          initialDesign={emailDesign || undefined}
+          onExportHtml={(html, design) => {
+            setEmailHtml(html);
+            setEmailDesign(design);
+          }}
+        />
         <div className="text-xs text-gray-500 mt-2">
           You can insert variables using the merge tag dropdown in the editor above.
         </div>
