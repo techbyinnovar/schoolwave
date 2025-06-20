@@ -24,5 +24,19 @@ export async function sendWhatsAppMessage(options: WhatsAppMessageOptions): Prom
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${WAAPI_TOKEN}`,
   };
-  await axios.post(WAAPI_URL, payload, { headers });
+  try {
+    await axios.post(WAAPI_URL, payload, { headers });
+  } catch (error: any) {
+    // Log all errors with context
+    console.error('[WAAPI SEND ERROR]', {
+      error: error?.message || error,
+      stack: error?.stack,
+      payload,
+      time: new Date().toISOString(),
+      response: error?.response?.data,
+      code: error?.code,
+      config: error?.config,
+    });
+    throw error;
+  }
 }

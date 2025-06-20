@@ -1,4 +1,4 @@
-import { sendMail } from "@/utils/mailer";
+import { sendSmtpMail } from "@/utils/smtpMailer";
 import { sendWhatsAppMessage } from '@/utils/whatsapp';
 import { db as prisma } from '@/lib/db';
 
@@ -64,7 +64,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
       // No inline images or DB attachments, so just use attachments (empty array)
       const allAttachments = attachments;
 
-      await sendMail({
+      await sendSmtpMail({
         to: lead.email,
         subject: render(template.subject || ''),
         html,
