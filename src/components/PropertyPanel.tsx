@@ -1,4 +1,5 @@
 import React from 'react';
+import CloudinaryUploadWidget from '@/components/shared/CloudinaryUploadWidget';
 import { Trash2 } from 'lucide-react';
 import { Element } from '../../types/email';
 
@@ -123,67 +124,88 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({
         )}
         {/* Content editor for specific element types */}
         {!isColumn && ((element as Element).type === 'text' || (element as Element).type === 'heading' || (element as Element).type === 'button') && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {(element as Element).type === 'text' ? 'Text content' : 
-               (element as Element).type === 'heading' ? 'Heading text' : 'Button label'}
-            </label>
-            {/* Variable Insert Buttons */}
-            <div className="flex flex-wrap gap-2 mb-2">
-              {[
-                { label: 'Agent Name', value: '{{agent.name}}' },
-                { label: 'Agent Email', value: '{{agent.email}}' },
-                { label: 'Lead School Name', value: '{{lead.schoolName}}' },
-                { label: 'Lead Contact Name', value: '{{lead.contactName}}' },
-                { label: 'Lead Email', value: '{{lead.email}}' },
-                { label: 'Lead Phone', value: '{{lead.phone}}' },
-                { label: 'Lead Address', value: '{{lead.address}}' },
-              ].map(v => (
-                <button
-                  type="button"
-                  key={v.value}
-                  className="px-2 py-1 text-xs rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
-                  onClick={e => {
-                    e.preventDefault();
-                    // Insert variable at cursor position
-                    const input = document.activeElement as HTMLInputElement | HTMLTextAreaElement;
-                    if (input && (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA')) {
-                      const start = input.selectionStart || 0;
-                      const end = input.selectionEnd || 0;
-                      const before = element.content.slice(0, start);
-                      const after = element.content.slice(end);
-                      const newContent = before + v.value + after;
-                      onUpdateElement({ ...element, content: newContent });
-                      setTimeout(() => {
-                        input.focus();
-                        input.selectionStart = input.selectionEnd = start + v.value.length;
-                      }, 0);
-                    } else {
-                      onUpdateElement({ ...element, content: element.content + v.value });
-                    }
-                  }}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-            {element.type === 'text' ? (
-              <textarea
-                value={element.content}
-                onChange={handleContentChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                rows={3}
-              />
-            ) : (
-              <input
-                type="text"
-                value={element.content}
-                onChange={handleContentChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            )}
-          </div>
-        )}
+  <>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {(element as Element).type === 'text' ? 'Text content' :
+          (element as Element).type === 'heading' ? 'Heading text' : 'Button label'}
+      </label>
+      {/* Variable Insert Buttons */}
+      <div className="flex flex-wrap gap-2 mb-2">
+        {[
+          { label: 'Agent Name', value: '{{agent.name}}' },
+          { label: 'Agent Email', value: '{{agent.email}}' },
+          { label: 'Lead School Name', value: '{{lead.schoolName}}' },
+          { label: 'Lead Contact Name', value: '{{lead.contactName}}' },
+          { label: 'Lead Email', value: '{{lead.email}}' },
+          { label: 'Lead Phone', value: '{{lead.phone}}' },
+          { label: 'Lead Address', value: '{{lead.address}}' },
+        ].map(v => (
+          <button
+            type="button"
+            key={v.value}
+            className="px-2 py-1 text-xs rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+            onClick={e => {
+              e.preventDefault();
+              // Insert variable at cursor position
+              const input = document.activeElement as HTMLInputElement | HTMLTextAreaElement;
+              if (input && (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA')) {
+                const start = input.selectionStart || 0;
+                const end = input.selectionEnd || 0;
+                const before = element.content.slice(0, start);
+                const after = element.content.slice(end);
+                const newContent = before + v.value + after;
+                onUpdateElement({ ...element, content: newContent });
+                setTimeout(() => {
+                  input.focus();
+                  input.selectionStart = input.selectionEnd = start + v.value.length;
+                }, 0);
+              } else {
+                onUpdateElement({ ...element, content: element.content + v.value });
+              }
+            }}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+      {element.type === 'text' ? (
+        <textarea
+          value={element.content}
+          onChange={handleContentChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          rows={3}
+        />
+      ) : element.type === 'button' ? (
+        <>
+          <input
+            type="text"
+            value={element.content}
+            onChange={handleContentChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 mb-2"
+          />
+          {/* Button preview (non-interactive) */}
+          <button
+            type="button"
+            className="w-full px-4 py-2 rounded bg-blue-600 text-white font-semibold mt-2 opacity-70 pointer-events-none cursor-not-allowed"
+            disabled
+            tabIndex={-1}
+            aria-disabled="true"
+          >
+            {element.content || 'Button'}
+          </button>
+        </>
+      ) : (
+        <input
+          type="text"
+          value={element.content}
+          onChange={handleContentChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        />
+      )}
+    </div>
+  </>
+)}
         
         {/* Image URL editor */}
         {element.type === 'image' && (
@@ -191,6 +213,18 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Image URL
             </label>
+            {/* Cloudinary Upload Button */}
+            <CloudinaryUploadWidget
+              onUploadSuccess={result => {
+                onUpdateElement({ ...element, content: result.url });
+              }}
+              resourceType="image"
+              buttonText="Upload Image"
+              initialValue={element.content}
+              clearable={!!element.content}
+              onClear={() => onUpdateElement({ ...element, content: '' })}
+              className="mb-2"
+            />
             <input
               type="text"
               value={element.content}
