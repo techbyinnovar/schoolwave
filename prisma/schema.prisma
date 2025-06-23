@@ -336,6 +336,7 @@ model MessageTemplate {
   emailAttachments String[] // URLs for attachments
   whatsappText  String? // Text for WhatsApp
   whatsappImages String[] // URLs for WhatsApp images
+  emailDesign   Json?   // Added field for email builder design JSON
   createdById   String
   createdBy     User     @relation(fields: [createdById], references: [id])
   createdAt     DateTime @default(now())

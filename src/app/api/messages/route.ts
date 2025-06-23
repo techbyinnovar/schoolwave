@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse request body
-    const { name, subject, emailHtml, emailImages, emailAttachments, whatsappText, whatsappImages, attachments } = await req.json();
+    const body = await req.json();
+    console.log('API: Incoming request body:', body);
+    const { name, subject, emailHtml, emailDesign, emailImages, emailAttachments, whatsappText, whatsappImages, attachments } = body;
 
     // Create the template in the database
     const template = await prisma.messageTemplate.create({
@@ -31,12 +33,12 @@ export async function POST(req: NextRequest) {
         name,
         subject,
         emailHtml,
+        emailDesign, // <-- Persist emailDesign
         emailImages,
         emailAttachments,
         whatsappText,
         whatsappImages,
         createdById: token.sub as string, // token.sub contains the user ID
-
       },
     });
 
@@ -97,6 +99,7 @@ export async function PATCH(req: NextRequest) {
         where: { id },
         data: {
           ...rest,
+          emailDesign: rest.emailDesign, // Explicitly persist emailDesign
           updatedAt: new Date(),
         },
       });
