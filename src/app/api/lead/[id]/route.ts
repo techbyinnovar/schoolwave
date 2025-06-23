@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from "@/lib/db";
-import { sendTemplateToLead } from "../sendTemplateToLead";
+
+export const runtime = "nodejs";
+import { sendTemplateToLead } from "@/app/api/lead/sendTemplateToLead";
 
 
 // GET /api/lead/[id] - get a single lead by id
