@@ -87,4 +87,6 @@ const EmailBuilder = React.forwardRef<any, EmailEditorProps>(
   }
 );
 
+EmailBuilder.displayName = "EmailBuilder";
+
 export default EmailBuilder;
