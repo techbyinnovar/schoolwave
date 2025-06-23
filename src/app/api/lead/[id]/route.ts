@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from "@/lib/db";
+import { sendTemplateToLead } from "../sendTemplateToLead";
 
 
 // GET /api/lead/[id] - get a single lead by id
@@ -31,6 +32,12 @@ export async function PATCH(
   const userId = session?.user?.id;
   const data = await req.json();
 
+  // Fetch current lead (with relations) to detect stage change later
+  const existingLead = await prisma.lead.findUnique({
+    where: { id },
+    include: { stage: true, agent: true }
+  });
+
   // Role-based allowed fields
   let allowedFields: string[] = [];
   if (role === 'ADMIN') {
@@ -53,7 +60,31 @@ export async function PATCH(
   }
 
   try {
-    const lead = await prisma.lead.update({ where: { id }, data: filteredUpdate });
+    const lead = await prisma.lead.update({
+      where: { id },
+      data: filteredUpdate,
+      include: { stage: true, agent: true }
+    });
+
+    // ---- Auto send template if stage changed & new stage has default template ----
+    if (existingLead?.stageId !== lead.stageId && lead.stageId) {
+      const stage = await prisma.stage.findUnique({
+        where: { id: lead.stageId },
+        include: { defaultTemplate: true }
+      });
+      if (stage?.defaultTemplate) {
+        // fire and forget; do not block response
+        sendTemplateToLead({
+          lead,
+          agent: lead.agent,
+          template: stage.defaultTemplate,
+          userId,
+          fromStage: existingLead?.stage?.name ?? null,
+          toStage: stage.name ?? null,
+        }).catch(console.error);
+      }
+    }
+
     return NextResponse.json({ result: { data: lead } });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to update lead' }, { status: 500 });
