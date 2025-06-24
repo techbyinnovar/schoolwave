@@ -3,13 +3,13 @@ import CloudinaryUploadWidget from '@/components/shared/CloudinaryUploadWidget';
 
 type Block = {
   type: string;
-  props: { [key: string]: string };
+  props: { [key: string]: any };
 };
 
-const availableComponents: { type: string; label: string; props: { [key: string]: string } }[] = [
-  { type: 'h1', label: 'Heading 1', props: { children: 'Your headline here' } },
-  { type: 'p', label: 'Paragraph', props: { children: 'Your text here' } },
-  { type: 'img', label: 'Image', props: { src: 'https://via.placeholder.com/300', alt: 'Image description' } },
+const availableComponents: { type: string; label: string; props: { [key: string]: any } }[] = [
+  { type: 'h1', label: 'Heading 1', props: { children: 'Your headline here', color: '#000000', fontSize: '32px', textAlign: 'left', fontFamily: 'Arial' } },
+  { type: 'p', label: 'Paragraph', props: { children: 'Your text here', color: '#000000', fontSize: '16px', textAlign: 'left', fontFamily: 'Arial' } },
+  { type: 'img', label: 'Image', props: { src: 'https://via.placeholder.com/300', alt: 'Image description', width: '300', height: 'auto' } },
   { type: 'a', label: 'Link', props: { href: 'https://example.com', children: 'Click here' } },
 ];
 
@@ -22,8 +22,8 @@ const EmailBuilder: React.FC<SimpleEmailBuilderProps> = ({ initialBlocks = [], o
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [html, setHtml] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'preview' | 'edit'>('preview');
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // always regenerate HTML and notify parent when blocks array changes
   React.useEffect(() => {
     updateHtml(blocks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -49,9 +49,22 @@ const EmailBuilder: React.FC<SimpleEmailBuilderProps> = ({ initialBlocks = [], o
   };
 
   const updateHtml = (blocksToRender: Block[]) => {
+    const buildStyleString = (props: any) => {
+      const styleEntries: string[] = [];
+      if (props.color) styleEntries.push(`color:${props.color}`);
+      if (props.fontSize) styleEntries.push(`font-size:${props.fontSize}`);
+      if (props.textAlign) styleEntries.push(`text-align:${props.textAlign}`);
+      if (props.fontFamily) styleEntries.push(`font-family:${props.fontFamily}`);
+      if (props.width && props.type === 'img') styleEntries.push(`width:${props.width}px`);
+      if (props.height && props.type === 'img') styleEntries.push(`height:${props.height}px`);
+      return styleEntries.length ? styleEntries.join(';') : undefined;
+    };
+
     const inner = blocksToRender
       .map(({ type, props }) => {
         const { children, ...rest } = props;
+        const styleStr = buildStyleString({ ...props, type });
+        if (styleStr) rest.style = styleStr;
         const attrs = Object.entries(rest)
           .map(([k, v]) => `${k}="${v}"`)
           .join(' ');
@@ -60,25 +73,53 @@ const EmailBuilder: React.FC<SimpleEmailBuilderProps> = ({ initialBlocks = [], o
           : `<${type} ${attrs}>${children || ''}</${type}>`;
       })
       .join('\n');
+
     const htmlOutput = `<div style="font-family: Arial, sans-serif;">\n${inner}\n</div>`;
     setHtml(htmlOutput);
     onChange?.(blocksToRender, htmlOutput);
   };
 
-  const renderBlock = (block: Block, index: number) => {
-    const { type, props } = block;
-    if (type === 'img') {
-      return <img key={index} {...props} className="max-w-full" />;
-    } else if (type === 'a') {
-      return (
-        <a key={index} href={props.href} className="text-blue-600 underline">
-          {props.children}
-        </a>
-      );
-    } else {
-      const Tag = type as keyof JSX.IntrinsicElements;
-      return <Tag key={index}>{props.children}</Tag>;
-    }
+  const renderSidebar = (block: Block, i: number) => {
+    if (!block) return null;
+    return (
+      <div className="space-y-4 pr-4">
+        <h3 className="text-xl font-semibold mb-2">{block.type.toUpperCase()} Settings</h3>
+        {block.type !== 'img' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Font Size (px)</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-1"
+                value={parseInt(block.props.fontSize || '16')}
+                onChange={(e) => updateBlockProp(i, 'fontSize', e.target.value + 'px')}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Font Color</label>
+              <input
+                type="color"
+                className="w-full border rounded h-10"
+                value={block.props.color}
+                onChange={(e) => updateBlockProp(i, 'color', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Text Align</label>
+              <select
+                className="w-full border rounded px-3 py-1"
+                value={block.props.textAlign}
+                onChange={(e) => updateBlockProp(i, 'textAlign', e.target.value)}
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -119,72 +160,69 @@ const EmailBuilder: React.FC<SimpleEmailBuilderProps> = ({ initialBlocks = [], o
 
       {/* Preview */}
       {activeTab === 'preview' && (
-        <div className="space-y-4 border p-4 rounded bg-gray-50 shadow">
-          {blocks.map((block, i) => renderBlock(block, i))}
-        </div>
+        <div className="border p-4 rounded bg-white shadow prose max-w-none" dangerouslySetInnerHTML={{ __html: html }} />
       )}
 
       {/* Edit Tab */}
       {activeTab === 'edit' && (
-        <div className="space-y-5">
-          {blocks.map((block, i) => (
-            <div key={i} className="border rounded-lg p-4 bg-gray-50 shadow-sm">
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="text-lg font-semibold text-gray-700">{block.type.toUpperCase()}</h4>
-                <button
-                  onClick={() => removeBlock(i)}
-                  className="text-sm text-red-500 hover:underline"
-                >
-                  Remove
-                </button>
-              </div>
+        <div className="flex">
+          {/* Blocks list */}
+          <div className="flex-1 space-y-5">
+            {blocks.map((block, i) => (
+              <div
+                key={i}
+                className={`border rounded-lg p-4 bg-gray-50 shadow-sm ${selectedIndex === i ? 'ring-2 ring-blue-500' : ''}`}
+                onClick={() => setSelectedIndex(i)}
+              >
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-lg font-semibold text-gray-700">{block.type.toUpperCase()}</h4>
+                  <button
+                    onClick={() => removeBlock(i)}
+                    className="text-sm text-red-500 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
 
-              {/* Edit Props */}
-              <div className="grid gap-3">
-                {Object.entries(block.props).map(([key, val]) => (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-600 mb-1 capitalize">
-                      {key}
-                    </label>
-                    {block.type === 'img' && key === 'src' ? (
-                      <CloudinaryUploadWidget
-                        initialValue={val}
-                        buttonText={val ? 'Change Image' : 'Upload Image'}
-                        resourceType="image"
-                        onUploadSuccess={({ url }: { url: string }) => updateBlockProp(i, 'src', url)}
-                        clearable={!!val}
-                        onClear={() => updateBlockProp(i, 'src', '')}
-                      />
-                    ) : key === 'children' ? (
-                      <textarea
-                        rows={2}
-                        className="w-full border rounded px-3 py-2"
-                        value={val}
-                        onChange={(e) => updateBlockProp(i, key, e.target.value)}
-                      />
-                    ) : (
-                      <input
-                        type={key === 'src' || key === 'href' ? 'url' : 'text'}
-                        className="w-full border rounded px-3 py-2"
-                        value={val}
-                        onChange={(e) => updateBlockProp(i, key, e.target.value)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                <div className="grid gap-3">
+                  {Object.entries(block.props).map(([key, val]) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-gray-600 mb-1 capitalize">
+                        {key}
+                      </label>
+                      {block.type === 'img' && key === 'src' ? (
+                        <CloudinaryUploadWidget
+                          initialValue={val}
+                          buttonText={val ? 'Change Image' : 'Upload Image'}
+                          resourceType="image"
+                          onUploadSuccess={({ url }: { url: string }) => updateBlockProp(i, 'src', url)}
+                          clearable={!!val}
+                          onClear={() => updateBlockProp(i, 'src', '')}
+                        />
+                      ) : key === 'children' ? (
+                        <textarea
+                          rows={2}
+                          className="w-full border rounded px-3 py-2"
+                          value={val}
+                          onChange={(e) => updateBlockProp(i, key, e.target.value)}
+                        />
+                      ) : (
+                        <input
+                          type={key === 'src' || key === 'href' ? 'url' : 'text'}
+                          className="w-full border rounded px-3 py-2"
+                          value={val}
+                          onChange={(e) => updateBlockProp(i, key, e.target.value)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-      {/* Raw HTML */}
-      {html && (
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-2">HTML Output</h3>
-          <pre className="bg-gray-100 p-4 rounded max-h-64 overflow-auto whitespace-pre-wrap text-sm border">
-            {html}
-          </pre>
+                {/* Sidebar */}
+                <div className="mt-4">{renderSidebar(block, i)}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

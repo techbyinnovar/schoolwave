@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import SimpleEmailBuilder from "@/components/SimpleEmailBuilder";
+import NestedEmailBuilder from "@/components/NestedEmailBuilder";
 import { cloudinaryUpload } from "@/utils/cloudinaryUpload";
 
 interface MessageTemplateFormProps {
@@ -186,7 +186,7 @@ export default function MessageTemplateForm({
             </div>
 
             <label className="block font-semibold mb-1">Email Body</label>
-            <SimpleEmailBuilder
+            <NestedEmailBuilder
               initialBlocks={blocks}
               onChange={handleBuilderChange}
             />
