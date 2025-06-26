@@ -1,9 +1,13 @@
 "use client";
-import { useState, useEffect, useMemo, FormEvent, ReactNode } from "react";
+import { useState, useEffect, useMemo, useCallback, FormEvent, ReactNode, Suspense } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import AdminSidebar from '@/components/AdminSidebar';
 import { useSession } from "next-auth/react";
 import LeadTable from './LeadTable';
+import LeadDetailContent from '@/components/admin/LeadDetailContent';
+import LeadStatsSummary from './LeadStatsSummary';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+
 
 
 // Define the Lead type
@@ -20,36 +24,96 @@ export type Lead = {
   ownedById?: string | null;
   ownedBy?: { id: string; name?: string | null; email: string | null } | null;
   stage?: string | { name: string };
+  lastDisposition?: string | null;
+};
+
+export type LeadTask = {
+  id: string;
+  leadId: string;
+  title: string;
+  dueDate: string;
+  status: string;
 };
 
 type ModalProps = {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
+  full?: boolean; // if true, modal takes full viewport
 };
 
-function Modal({ open, onClose, children }: ModalProps) {
+function Modal({ open, onClose, children, full }: ModalProps) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white rounded-lg shadow-lg p-6 min-w-[340px] relative">
-        <button
-          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-          onClick={onClose}
-          aria-label="Close"
-        >&#10005;</button>
-        {children}
-      </div>
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
+      {full ? (
+        <div className="bg-white w-[80%] h-[80%] relative rounded shadow-lg overflow-y-auto">
+          <button
+            className="absolute top-3 right-4 z-10 text-gray-600 hover:text-gray-800 text-2xl"
+            onClick={onClose}
+            aria-label="Close"
+          >&times;</button>
+          {children}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-lg p-6 min-w-[340px] relative">
+          <button
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            onClick={onClose}
+            aria-label="Close"
+          >&#10005;</button>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
+
+// Wrapper component that provides the Suspense boundary
 export default function AdminCrmPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Loading lead management...</div>}>
+      <AdminCrmPageInner />
+    </Suspense>
+  );
+}
+
+function AdminCrmPageInner() {
   const { data: session } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const userRole = session?.user?.role;
   const userId = session?.user?.id;
 
   const [tab, setTab] = useState<'leads' | 'stages'>('leads');
   const [leads, setLeads] = useState<Lead[]>([]);
+
+
+  
+  // Handle URL changes
+  useEffect(() => {
+    const handlePopState = () => {
+      // Update filter states from current URL parameters
+      const params = new URLSearchParams(window.location.search);
+      setSearch(params.get('search') || "");
+      setOwnerFilter(params.get('owner') || "");
+      setAssignedFilter(params.get('assigned') || "");
+      setStageFilter(params.get('stage') || "");
+      setDispositionFilter(params.get('disposition') || "");
+      setDueTodayFilter(params.get('dueToday') === 'true');
+      setDueWeekFilter(params.get('dueWeek') === 'true');
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+  
+  // Debug logging for current URL
+  useEffect(() => {
+    console.log('Current URL:', window.location.href);
+    console.log('Current search params:', window.location.search);
+  }, []);
 
   // Log ownedBy details for debugging
   useEffect(() => {
@@ -61,10 +125,121 @@ export default function AdminCrmPage() {
   }, [leads]);
 
   const [agents, setAgents] = useState<{ id: string; name?: string; email: string }[]>([]);
-  const [search, setSearch] = useState("");
-const [ownerFilter, setOwnerFilter] = useState<string>("");
-const [assignedFilter, setAssignedFilter] = useState<string>("");
-const [stageFilter, setStageFilter] = useState<string>("");
+  // Initialize filter state from URL params
+  const [search, setSearch] = useState(searchParams?.get('search') || "");
+  const [ownerFilter, setOwnerFilter] = useState<string>(searchParams?.get('owner') || "");
+  const [assignedFilter, setAssignedFilter] = useState<string>(searchParams?.get('assigned') || "");
+  const [stageFilter, setStageFilter] = useState<string>(searchParams?.get('stage') || "");
+  const [dispositionFilter, setDispositionFilter] = useState<string>(searchParams?.get('disposition') || "");
+  const [dueTodayFilter, setDueTodayFilter] = useState<boolean>(searchParams?.get('dueToday') === 'true');
+  const [dueWeekFilter, setDueWeekFilter] = useState<boolean>(searchParams?.get('dueWeek') === 'true');
+  const [dispositions, setDispositions] = useState<string[]>([]);
+  const [leadTasks, setLeadTasks] = useState<LeadTask[]>([]);
+  const [leadsWithLastDisposition, setLeadsWithLastDisposition] = useState<Record<string, string>>({});
+  
+  // Create a function to generate a URL with current filters
+  const getFilterUrl = useCallback((options: {
+    search?: string;
+    owner?: string;
+    assigned?: string;
+    stage?: string;
+    disposition?: string;
+    dueTodayFilter?: boolean;
+    dueWeekFilter?: boolean;
+    leadId?: string;
+  }) => {
+    // Start with base URL
+    const baseUrl = '/admin/crm';
+    const params = new URLSearchParams();
+    
+    // Add current search param if present
+    if (options.search) params.set('search', options.search);
+    
+    // Add owner filter if present
+    if (options.owner) params.set('owner', options.owner);
+    
+    // Add assigned filter if present
+    if (options.assigned) params.set('assigned', options.assigned);
+    
+    // Add stage filter if present
+    if (options.stage) params.set('stage', options.stage);
+    
+    // Add disposition filter if present
+    if (options.disposition) params.set('disposition', options.disposition);
+    
+    // Add due today filter if true
+    if (options.dueTodayFilter) params.set('dueToday', 'true');
+    
+    // Add due week filter if true
+    if (options.dueWeekFilter) params.set('dueWeek', 'true');
+    
+    // Add lead ID if present
+    if (options.leadId) params.set('lead', options.leadId);
+    
+    // Return full URL with query string
+    const queryString = params.toString();
+    return queryString ? `${baseUrl}?${queryString}` : baseUrl;
+  }, []);
+  // Add updateUrlWithFilters function
+  const updateUrlWithFilters = (filters: {
+    search?: string;
+    owner?: string;
+    assigned?: string;
+    stage?: string;
+    disposition?: string;
+    dueTodayFilter?: boolean;
+    dueWeekFilter?: boolean;
+  }) => {
+    // Start with a new URLSearchParams object
+    const params = new URLSearchParams(window.location.search);
+    
+    // Update params based on provided filters
+    if (filters.search !== undefined) {
+      if (filters.search) params.set('search', filters.search);
+      else params.delete('search');
+    }
+    
+    if (filters.owner !== undefined) {
+      if (filters.owner) params.set('owner', filters.owner);
+      else params.delete('owner');
+    }
+    
+    if (filters.assigned !== undefined) {
+      if (filters.assigned) params.set('assigned', filters.assigned);
+      else params.delete('assigned');
+    }
+    
+    if (filters.stage !== undefined) {
+      if (filters.stage) params.set('stage', filters.stage);
+      else params.delete('stage');
+    }
+    
+    if (filters.disposition !== undefined) {
+      if (filters.disposition) params.set('disposition', filters.disposition);
+      else params.delete('disposition');
+    }
+    
+    if (filters.dueTodayFilter !== undefined) {
+      if (filters.dueTodayFilter) params.set('dueToday', 'true');
+      else params.delete('dueToday');
+    }
+    
+    if (filters.dueWeekFilter !== undefined) {
+      if (filters.dueWeekFilter) params.set('dueWeek', 'true');
+      else params.delete('dueWeek');
+    }
+    
+    // Create the URL string
+    const queryString = params.toString();
+    const url = queryString ? `${pathname}?${queryString}` : pathname;
+    
+    // Log for debugging
+    console.log('Updating URL to:', url);
+    
+    // Update URL using the history API (client-side navigation)
+    window.history.pushState({}, '', url);
+  };
+  
   const [form, setForm] = useState<Omit<Lead, "id">>({
     schoolName: "", // optional
     name: "",
@@ -77,6 +252,12 @@ const [stageFilter, setStageFilter] = useState<string>("");
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  // if selectedLeadId is set, modalOpen will show LeadDetailModal; otherwise it shows create/edit form
+  
+  const initialLeadParam = searchParams?.get('lead') || null;
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadParam);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [leadDetailLoading, setLeadDetailLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [stages, setStages] = useState<{ id: string; name: string; order: number; color?: string }[]>([]);
@@ -147,23 +328,91 @@ const [stageFilter, setStageFilter] = useState<string>("");
     return String(stageValue);
   };
 
+  // Handler when a lead row is clicked
+  const handleSelectLead = (id: string) => {
+    setSelectedLeadId(id);
+    router.push(`?lead=${id}`, { scroll: false });
+  };
+
+  // Fetch the selected lead whenever selectedLeadId changes
+  useEffect(() => {
+    if (!selectedLeadId) return;
+    setLeadDetailLoading(true);
+    fetch(`/api/lead/${selectedLeadId}`)
+      .then(res => res.json())
+      .then(data => setSelectedLead(data.result?.data ?? null))
+      .catch(() => setSelectedLead(null))
+      .finally(() => setLeadDetailLoading(false));
+  }, [selectedLeadId]);
+
   // Fetch leads, agents, and stages
   useEffect(() => {
+    // Fetch leads
     fetch("/api/lead")
       .then(res => res.json())
-      .then(data => setLeads(data.result?.data ?? []));
+      .then(data => {
+        const fetchedLeads = data.result?.data ?? [];
+        setLeads(fetchedLeads);
+        
+        // For each lead, fetch its last disposition from history
+        const leadIds = fetchedLeads.map((lead: Lead) => lead.id);
+        fetchLeadsLastDispositions(leadIds);
+      });
+      
+    // Fetch agents
     fetch("/api/user?role=AGENT")
       .then(res => res.json())
       .then(data => setAgents(data.result?.data ?? []));
+      
+    // Fetch stages
     fetch("/api/stage")
       .then(res => res.json())
       .then(data => setStages(data.result?.data ?? []));
+      
+    // Fetch message templates
     setTemplateLoading(true);
     fetch("/api/message-template")
       .then(res => res.json())
       .then(data => setMessageTemplates(data.result?.data ?? []))
       .finally(() => setTemplateLoading(false));
+      
+    // Fetch available dispositions
+    fetch("/api/disposition")
+      .then(res => res.json())
+      .then(data => setDispositions(data.result?.data ?? []));
+      
+    // Fetch all tasks
+    fetchAllLeadTasks();
   }, []);
+  
+  // Helper function to fetch the last disposition for each lead
+  const fetchLeadsLastDispositions = async (leadIds: string[]) => {
+    // This would be replaced with an actual API call to get last dispositions
+    // For now, we'll just simulate this with placeholder data
+    const dispositionsMap: Record<string, string> = {};
+    
+    // In a real implementation, you would fetch the actual last dispositions from your API
+    // Something like:
+    // const promises = leadIds.map(id => fetch(`/api/lead/${id}/history?type=action&limit=1`).then(r => r.json()));
+    // const results = await Promise.all(promises);
+    // results.forEach((result, index) => {
+    //   const lastAction = result.result?.data[0];
+    //   if (lastAction && lastAction.disposition) {
+    //     dispositionsMap[leadIds[index]] = lastAction.disposition;
+    //   }
+    // });
+    
+    setLeadsWithLastDisposition(dispositionsMap);
+  };
+  
+  // Helper function to fetch tasks for all leads
+  const fetchAllLeadTasks = () => {
+    fetch('/api/tasks?type=LEAD')
+      .then(res => res.json())
+      .then(data => {
+        setLeadTasks(data.tasks || []);
+      });
+  };
 
   // Populate Kanban leads when leads or stages change
   useEffect(() => {
@@ -294,17 +543,84 @@ const [stageFilter, setStageFilter] = useState<string>("");
 
   // Filter leads  // Search filter (use visibleLeads as base)
   const filteredLeads = useMemo(() => {
-    if (!search.trim()) return visibleLeads;
-    const q = search.trim().toLowerCase();
-    return visibleLeads.filter(
-      (l) =>
-        (l.schoolName ?? '').toLowerCase().includes(q) ||
-        (l.name ?? '').toLowerCase().includes(q) ||
-        (l.phone ?? '').toLowerCase().includes(q) ||
-        (l.email ?? '').toLowerCase().includes(q) ||
-        (l.address ?? '').toLowerCase().includes(q)
-    );
-  }, [search, visibleLeads]);
+    // Start with base leads (for role restrictions)
+    let filtered = visibleLeads;
+    
+    // Apply search filter
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      filtered = filtered.filter(
+        (l) =>
+          (l.schoolName ?? '').toLowerCase().includes(q) ||
+          (l.name ?? '').toLowerCase().includes(q) ||
+          (l.phone ?? '').toLowerCase().includes(q) ||
+          (l.email ?? '').toLowerCase().includes(q) ||
+          (l.address ?? '').toLowerCase().includes(q)
+      );
+    }
+    
+    // Apply owner filter
+    if (ownerFilter) {
+      filtered = filtered.filter(lead => lead.ownedById === ownerFilter);
+    }
+    
+    // Apply assigned filter
+    if (assignedFilter) {
+      filtered = filtered.filter(lead => lead.assignedTo === assignedFilter);
+    }
+    
+    // Apply stage filter
+    if (stageFilter) {
+      filtered = filtered.filter(lead => {
+        const stageName = getStageName(lead.stage);
+        return stageName === stageFilter;
+      });
+    }
+    
+    // Apply disposition filter
+    if (dispositionFilter) {
+      filtered = filtered.filter(lead => 
+        leadsWithLastDisposition[lead.id] === dispositionFilter
+      );
+    }
+    
+    // Apply due today filter
+    if (dueTodayFilter) {
+      const todayTasks = leadTasks.filter(task => {
+        // Check if task is due today and not completed
+        const today = new Date();
+        const taskDate = new Date(task.dueDate);
+        return task.status !== 'completed' && 
+          taskDate.getDate() === today.getDate() && 
+          taskDate.getMonth() === today.getMonth() && 
+          taskDate.getFullYear() === today.getFullYear();
+      });
+      const leadsWithTasksDueToday = new Set(todayTasks.map(task => task.leadId));
+      filtered = filtered.filter(lead => leadsWithTasksDueToday.has(lead.id));
+    }
+    
+    // Apply due this week filter
+    if (dueWeekFilter) {
+      const weekTasks = leadTasks.filter(task => {
+        // Check if task is due this week and not completed
+        if (task.status === 'completed') return false;
+        
+        const taskDate = new Date(task.dueDate);
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - dayOfWeek);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        
+        return taskDate >= startOfWeek && taskDate <= endOfWeek;
+      });
+      const leadsWithTasksDueThisWeek = new Set(weekTasks.map(task => task.leadId));
+      filtered = filtered.filter(lead => leadsWithTasksDueThisWeek.has(lead.id));
+    }
+    
+    return filtered;
+  }, [search, visibleLeads, ownerFilter, assignedFilter, stageFilter, dispositionFilter, dueTodayFilter, dueWeekFilter, leadTasks, leadsWithLastDisposition]);
 
   // Kanban drag handler
   const onDragEnd = async (result: DropResult) => {
@@ -471,17 +787,37 @@ const [stageFilter, setStageFilter] = useState<string>("");
             <button className={`px-4 py-2 rounded font-semibold ${tab === 'leads' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`} onClick={() => setTab('leads')}>Leads Table</button>
             <button className={`px-4 py-2 rounded font-semibold ${tab === 'stages' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`} onClick={() => setTab('stages')}>Kanban Board</button>
           </div>
-          {tab === 'leads' && (
+          {tab === "leads" && (
             <>
-              <div className="flex justify-end mb-4">
+              <LeadStatsSummary 
+                leads={leads} 
+                userRole={userRole} 
+                userId={userId} 
+                leadTasks={leadTasks} 
+              />
+              <div className="flex justify-between mb-4">
                 <button
-                  className="bg-blue-600 text-white px-4 py-2 rounded font-semibold shadow hover:bg-blue-700 transition"
-                  onClick={openCreateModal}
+                  className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
+                  onClick={() => {
+                    setEditId(null);
+                    setModalOpen(true);
+                  }}
                 >
                   + Create Lead
                 </button>
               </div>
-              <LeadTable leads={filteredLeads} agents={agents} stages={stages} userRole={userRole} />
+              <LeadTable
+                leads={visibleLeads.map(lead => ({
+                  ...lead,
+                  lastDisposition: leadsWithLastDisposition[lead.id] || null
+                }))}
+                agents={agents}
+                stages={stages}
+                userRole={userRole}
+                onSelectLead={handleSelectLead}
+                dispositions={dispositions}
+                leadTasks={leadTasks}
+              />
             </>
           )}
           {tab === 'stages' && (
@@ -521,13 +857,61 @@ const [stageFilter, setStageFilter] = useState<string>("");
                 <select
                   className="border rounded px-3 py-2"
                   value={stageFilter}
-                  onChange={e => setStageFilter(e.target.value)}
+                  onChange={(e) => {
+                    setStageFilter(e.target.value);
+                    updateUrlWithFilters({ stage: e.target.value });
+                  }}
                 >
                   <option value="">All Stages</option>
                   {stages.map(stage => (
                     <option key={stage.id} value={stage.name}>{stage.name}</option>
                   ))}
                 </select>
+                <div className="mb-2">
+                  <label className="block mb-1 text-sm font-medium">By Disposition:</label>
+                  <select 
+                    className="p-2 border rounded mb-2 w-full" 
+                    value={dispositionFilter} 
+                    onChange={(e) => {
+                      setDispositionFilter(e.target.value);
+                      updateUrlWithFilters({ disposition: e.target.value });
+                    }}
+                  >
+                    <option value="">All Dispositions</option>
+                    {dispositions.map(disposition => (
+                      <option key={disposition} value={disposition}>{disposition}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mb-2">
+                  <label className="block mb-1 text-sm font-medium">Tasks Due:</label>
+                  <div className="flex flex-col space-y-2">
+                    <label className="inline-flex items-center">
+                      <input 
+                        type="checkbox" 
+                        className="mr-2" 
+                        checked={dueTodayFilter}
+                        onChange={(e) => {
+                          setDueTodayFilter(e.target.checked);
+                          updateUrlWithFilters({ dueTodayFilter: e.target.checked });
+                        }}
+                      />
+                      <span>Due Today</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input 
+                        type="checkbox" 
+                        className="mr-2" 
+                        checked={dueWeekFilter}
+                        onChange={(e) => {
+                          setDueWeekFilter(e.target.checked);
+                          updateUrlWithFilters({ dueWeekFilter: e.target.checked });
+                        }}
+                      />
+                      <span>Due This Week</span>
+                    </label>
+                  </div>
+                </div>
               </div>
               <div style={{ minHeight: '480px' }}>
                 <DragDropContext onDragEnd={onDragEnd}>
@@ -589,78 +973,12 @@ const [stageFilter, setStageFilter] = useState<string>("");
               </div>
             </div>
           )}
-          <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-            <h2 className="text-xl font-bold mb-4 text-blue-700">{editId ? "Edit Lead" : "Create Lead"}</h2>
-            {error && <div className="text-red-600 mb-2">{error}</div>}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-              <input type="text" placeholder="School Name" value={form.schoolName} onChange={e => setForm(f => ({ ...f, schoolName: e.target.value }))} className="border px-2 py-1 rounded" required />
-              <input type="text" placeholder="Contact Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border px-2 py-1 rounded" required />
-              <input type="text" placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="border px-2 py-1 rounded" required />
-              <input type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="border px-2 py-1 rounded" required />
-              <input type="text" placeholder="Address" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className="border px-2 py-1 rounded" required />
-              {userRole === "ADMIN" && (
-                <>
-                  <label className="text-sm font-semibold">Assign to Agent</label>
-                  <select value={form.assignedTo ?? ""} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value || null }))} className="border px-2 py-1 rounded">
-                    <option value="">Unassigned</option>
-                    {agents.map(agent => (
-                      <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
-                    ))}
-                  </select>
-                </>
-              )}
-              <label className="text-sm font-semibold">Stage</label>
-              <select value={typeof form.stage === 'string' ? form.stage : form.stage?.name ?? ''} onChange={e => setForm(f => ({ ...f, stage: e.target.value }))} className="border px-2 py-1 rounded">
-                {stages.map(stage => (
-                  <option key={stage.id} value={stage.name}>{stage.name}</option>
-                ))}
-              </select>
-              <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded font-semibold mt-2">{loading ? "Saving..." : editId ? "Update Lead" : "Create Lead"}</button>
-            </form>
+          <Modal open={!!selectedLeadId} onClose={() => {setSelectedLeadId(null); router.push('?');}} full>
+            {selectedLeadId && (
+              <LeadDetailContent leadId={selectedLeadId!} />
+            )}
+            
           </Modal>
-          {/* Stage CRUD Modal */}
-          {stageModalOpen && (
-            <Modal open={stageModalOpen} onClose={() => setStageModalOpen(false)}>
-              <h2 className="text-lg font-bold mb-2">{editingStage.id ? "Edit Stage" : "New Stage"}</h2>
-              <div className="mb-4">
-                <label className="block mb-1 font-semibold">Stage Name</label>
-                <input
-                  type="text"
-                  value={editingStage.name}
-                  onChange={e => setEditingStage(s => ({ ...s, name: e.target.value }))}
-                  className="border px-2 py-1 rounded w-full"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block mb-1 font-semibold">Color</label>
-                <input
-                  type="color"
-                  value={editingStage.color || "#000000"}
-                  onChange={e => setEditingStage(s => ({ ...s, color: e.target.value }))}
-                  className="w-12 h-8 p-0 border rounded"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block mb-1 font-semibold">Default Message Template</label>
-                <select
-                  value={editingStage.defaultTemplateId || ""}
-                  onChange={e => setEditingStage(s => ({ ...s, defaultTemplateId: e.target.value || undefined }))}
-                  className="border px-2 py-1 rounded w-full"
-                  disabled={templateLoading}
-                >
-                  <option value="">No Default</option>
-                  {messageTemplates.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-              {stageFormError && <div className="text-red-600 mb-2">{stageFormError}</div>}
-              <div className="flex justify-end gap-2">
-                <button className="px-4 py-2 rounded bg-gray-300" onClick={() => setStageModalOpen(false)}>Cancel</button>
-                <button className="px-4 py-2 rounded bg-blue-600 text-white" onClick={handleStageSave} disabled={loading}>{loading ? "Saving..." : "Save"}</button>
-              </div>
-            </Modal>
-          )}
           {/* Delete/Reassign Modal */}
           <Modal open={!!deleteStageId} onClose={() => setDeleteStageId(null)}>
             <h2 className="text-lg font-bold mb-2">Delete Stage</h2>
