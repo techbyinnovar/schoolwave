@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
+import { useSearchParams } from "next/navigation";
 
 type Agent = { id: string; name?: string | null; email: string };
 type Stage = { id: string; name: string };
@@ -63,6 +64,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   const [editMode, setEditMode] = useState(false);
   const [editError, setEditError] = useState<string>("");
   const userRole = session?.user?.role;
+  const searchParams = useSearchParams();
+  const embed = searchParams?.get('embed') === '1';
   const userId = session?.user?.id;
 
   // Fetch agents, stages, and lead details
@@ -166,183 +169,207 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
-  return (
-    <div className="min-h-screen flex bg-gray-100">
-      <main className="flex-1 p-8">
-        <div className="max-w-3xl mx-auto bg-white rounded shadow p-8">
-          <h1 className="text-2xl font-bold mb-4">Lead Details</h1>
-          <div className="mb-4">
-            <div><b>School Name:</b> {lead.schoolName}</div>
-            <div><b>Contact Name:</b> {lead.name}</div>
-            <div><b>Phone:</b> {lead.phone}</div>
-            <div><b>Email:</b> {lead.email}</div>
-            <div><b>Address:</b> {lead.address}</div>
-            <div className="flex items-center gap-2">
-              <b>Stage:</b>
-              {canEditStage && editMode ? (
-                <select
-                  value={editStage || ""}
-                  onChange={e => setEditStage(e.target.value || null)}
-                  className="border rounded px-2 py-1"
-                  disabled={saving}
-                >
-                  <option value="">Unassigned</option>
-                  {stages.map(stage => (
-                    <option key={stage.id} value={stage.id}>{stage.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <span>{lead.stage?.name || <span className="text-gray-400 italic">Unassigned</span>}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <b>Owner (Agent):</b>
-              {canEditOwner && editMode ? (
-                <select
-                  value={editOwner || ""}
-                  onChange={e => setEditOwner(e.target.value || null)}
-                  className="border rounded px-2 py-1"
-                  disabled={saving}
-                >
-                  <option value="">Unassigned</option>
-                  {agents.map(agent => (
-                    <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
-                  ))}
-                </select>
-              ) : (
-                lead.ownedBy ? `${lead.ownedBy.name || lead.ownedBy.email || lead.ownedBy.id}` : <span className="text-gray-400 italic">Unassigned</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <b>Assigned Agent:</b>
-              {canEditAssigned && editMode ? (
-                <select
-                  value={editAssigned || ""}
-                  onChange={e => setEditAssigned(e.target.value || null)}
-                  className="border rounded px-2 py-1"
-                  disabled={saving}
-                >
-                  <option value="">Unassigned</option>
-                  {agents.map(agent => (
-                    <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
-                  ))}
-                </select>
-              ) : (
-                lead.agent ? `${lead.agent.name || lead.agent.email || lead.agent.id}` : <span className="text-gray-400 italic">Unassigned</span>
-              )}
-            </div>
-            <div><b>Created At:</b> {new Date(lead.createdAt).toLocaleString()}</div>
-            {(canEditOwner || canEditAssigned || canEditStage) && (
-              <div className="mt-2 flex gap-2">
-                {!editMode ? (
-                  <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => setEditMode(true)} disabled={saving}>Edit</button>
-                ) : (
-                  <>
-                    <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={handleEditSave} disabled={saving || !fieldsChanged}>Save</button>
-                    <button className="bg-gray-400 text-white px-3 py-1 rounded" onClick={() => {
-                      setEditMode(false);
-                      setEditOwner(lead.ownedBy?.id || null);
-                      setEditAssigned(lead.agent?.id || null);
-                      setEditStage(lead.stage?.id || null);
-                    }} disabled={saving}>Cancel</button>
-                  </>
-                )}
-                {editError && <span className="text-red-500 ml-2">{editError}</span>}
-              </div>
+  // Helper: main lead detail content
+  const Content = () => (
+    <main className="flex-1 p-8">
+      <div className="max-w-3xl mx-auto bg-white rounded shadow p-8">
+        <h1 className="text-2xl font-bold mb-4">Lead Details</h1>
+        {embed ? (
+          <main className="w-full p-6 overflow-y-auto bg-white min-h-screen">
+            {/* existing body below remains unchanged */}
+          </main>
+        ) : (
+          <div className="min-h-screen flex bg-gray-100">
+            <AdminSidebar />
+            <main className="flex-1 p-6 overflow-y-auto">
+              {/* existing body below remains unchanged */}
+            </main>
+          </div>
+        )}
+        <div className="mb-4">
+          <div><b>School Name:</b> {lead.schoolName}</div>
+          <div><b>Contact Name:</b> {lead.name}</div>
+          <div><b>Phone:</b> {lead.phone}</div>
+          <div><b>Email:</b> {lead.email}</div>
+          <div><b>Address:</b> {lead.address}</div>
+          <div className="flex items-center gap-2">
+            <b>Stage:</b>
+            {canEditStage && editMode ? (
+              <select
+                value={editStage || ""}
+                onChange={e => setEditStage(e.target.value || null)}
+                className="border rounded px-2 py-1"
+                disabled={saving}
+              >
+                <option value="">Unassigned</option>
+                {stages.map(stage => (
+                  <option key={stage.id} value={stage.id}>{stage.name}</option>
+                ))}
+              </select>
+            ) : (
+              <span>{lead.stage?.name || <span className="text-gray-400 italic">Unassigned</span>}</span>
             )}
           </div>
+          <div className="flex items-center gap-2">
+            <b>Owner (Agent):</b>
+            {canEditOwner && editMode ? (
+              <select
+                value={editOwner || ""}
+                onChange={e => setEditOwner(e.target.value || null)}
+                className="border rounded px-2 py-1"
+                disabled={saving}
+              >
+                <option value="">Unassigned</option>
+                {agents.map(agent => (
+                  <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
+                ))}
+              </select>
+            ) : (
+              lead.ownedBy ? `${lead.ownedBy.name || lead.ownedBy.email || lead.ownedBy.id}` : <span className="text-gray-400 italic">Unassigned</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <b>Assigned Agent:</b>
+            {canEditAssigned && editMode ? (
+              <select
+                value={editAssigned || ""}
+                onChange={e => setEditAssigned(e.target.value || null)}
+                className="border rounded px-2 py-1"
+                disabled={saving}
+              >
+                <option value="">Unassigned</option>
+                {agents.map(agent => (
+                  <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
+                ))}
+              </select>
+            ) : (
+              lead.agent ? `${lead.agent.name || lead.agent.email || lead.agent.id}` : <span className="text-gray-400 italic">Unassigned</span>
+            )}
+          </div>
+          <div><b>Created At:</b> {new Date(lead.createdAt).toLocaleString()}</div>
+          {(canEditOwner || canEditAssigned || canEditStage) && (
+            <div className="mt-2 flex gap-2">
+              {!editMode ? (
+                <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => setEditMode(true)} disabled={saving}>Edit</button>
+              ) : (
+                <>
+                  <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={handleEditSave} disabled={saving || !fieldsChanged}>Save</button>
+                  <button className="bg-gray-400 text-white px-3 py-1 rounded" onClick={() => {
+                    setEditMode(false);
+                    setEditOwner(lead.ownedBy?.id || null);
+                    setEditAssigned(lead.agent?.id || null);
+                    setEditStage(lead.stage?.id || null);
+                  }} disabled={saving}>Cancel</button>
+                </>
+              )}
+              {editError && <span className="text-red-500 ml-2">{editError}</span>}
+            </div>
+          )}
+        </div>
 
-          {/* Collapsible Stage & Action History */}
-          <div className="mb-4">
-            <button
-              className="mb-2 px-3 py-1 bg-gray-200 rounded text-left w-full flex justify-between items-center"
-              onClick={() => setShowHistory(s => !s)}
-            >
-              <span className="text-xl font-semibold">Stage & Action History</span>
-              <span>{showHistory ? '▲' : '▼'}</span>
-            </button>
-            {showHistory && (
-              <ul className="mb-8 border rounded p-4 bg-gray-50">
-                {Array.isArray(lead.history) && lead.history.length === 0 && <li>No history yet.</li>}
-                {Array.isArray(lead.history) && lead.history.map(h => (
-                  <li key={h.id} className="mb-2">
-                    <span className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString()}</span> —
-                    {h.type === "stage_change" && (
-                      <span> <b>{h.user?.name || "System"}</b> moved from <b>{h.fromStage}</b> to <b>{h.toStage}</b></span>
-                    )}
-                    {h.type === "action" && (
-                      <span> <b>{h.user?.name || "System"}</b> logged action <b>{h.actionType}</b>{h.note && `: ${h.note}`}</span>
-                    )}
+        {/* Collapsible Stage & Action History */}
+        <div className="mb-4">
+          <button
+            className="mb-2 px-3 py-1 bg-gray-200 rounded text-left w-full flex justify-between items-center"
+            onClick={() => setShowHistory(s => !s)}
+          >
+            <span className="text-xl font-semibold">Stage & Action History</span>
+            <span>{showHistory ? '▲' : '▼'}</span>
+          </button>
+          {showHistory && (
+            <ul className="mb-8 border rounded p-4 bg-gray-50">
+              {Array.isArray(lead.history) && lead.history.length === 0 && <li>No history yet.</li>}
+              {Array.isArray(lead.history) && lead.history.map(h => (
+                <li key={h.id} className="mb-2">
+                  <span className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString()}</span> —
+                  {h.type === "stage_change" && (
+                    <span> <b>{h.user?.name || "System"}</b> moved from <b>{h.fromStage}</b> to <b>{h.toStage}</b></span>
+                  )}
+                  {h.type === "action" && (
+                    <span> <b>{h.user?.name || "System"}</b> logged action <b>{h.actionType}</b>{h.note && `: ${h.note}`}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Collapsible Notes */}
+        <div className="mb-4">
+          <button
+            className="mb-2 px-3 py-1 bg-gray-200 rounded text-left w-full flex justify-between items-center"
+            onClick={() => setShowNotes(s => !s)}
+          >
+            <span className="text-xl font-semibold">Notes</span>
+            <span>{showNotes ? '▲' : '▼'}</span>
+          </button>
+          {showNotes && (
+            <>
+              <ul className="mb-4 border rounded p-4 bg-gray-50">
+                {Array.isArray(lead.notes) && lead.notes.length === 0 && <li>No notes yet.</li>}
+                {Array.isArray(lead.notes) && lead.notes.map(n => (
+                  <li key={n.id} className="mb-2">
+                    <span className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</span> — <b>{n.user?.name || "Unknown"}</b>: {n.content}
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
-
-          {/* Collapsible Notes */}
-          <div className="mb-4">
-            <button
-              className="mb-2 px-3 py-1 bg-gray-200 rounded text-left w-full flex justify-between items-center"
-              onClick={() => setShowNotes(s => !s)}
-            >
-              <span className="text-xl font-semibold">Notes</span>
-              <span>{showNotes ? '▲' : '▼'}</span>
-            </button>
-            {showNotes && (
-              <>
-                <ul className="mb-4 border rounded p-4 bg-gray-50">
-                  {Array.isArray(lead.notes) && lead.notes.length === 0 && <li>No notes yet.</li>}
-                  {Array.isArray(lead.notes) && lead.notes.map(n => (
-                    <li key={n.id} className="mb-2">
-                      <span className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</span> — <b>{n.user?.name || "Unknown"}</b>: {n.content}
-                    </li>
-                  ))}
-                </ul>
-                <div className="flex gap-2 mb-6">
-                  <input
-                    className="flex-1 border rounded px-3 py-2"
-                    placeholder="Add a note..."
-                    value={note}
-                    onChange={e => setNote(e.target.value)}
-                    disabled={saving}
-                  />
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={handleAddNote} disabled={saving || !note.trim()}>Add Note</button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Collapsible Log Action */}
-          <div className="mb-4">
-            <button
-              className="mb-2 px-3 py-1 bg-gray-200 rounded text-left w-full flex justify-between items-center"
-              onClick={() => setShowLogAction(s => !s)}
-            >
-              <span className="text-xl font-semibold">Log Action</span>
-              <span>{showLogAction ? '▲' : '▼'}</span>
-            </button>
-            {showLogAction && (
-              <div className="flex gap-2 mb-2">
-                <select className="border rounded px-3 py-2" value={action} onChange={e => setAction(e.target.value)}>
-                  <option value="">Select Action</option>
-                  <option value="call">Call</option>
-                  <option value="visit">Visit</option>
-                  <option value="demo">Demo</option>
-                  <option value="payment">Payment</option>
-                </select>
+              <div className="flex gap-2 mb-6">
                 <input
                   className="flex-1 border rounded px-3 py-2"
-                  placeholder="Optional note..."
-                  value={actionNote}
-                  onChange={e => setActionNote(e.target.value)}
+                  placeholder="Add a note..."
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
                   disabled={saving}
                 />
-                <button className="bg-green-600 text-white px-4 py-2 rounded" onClick={handleLogAction} disabled={saving || !action}>Log Action</button>
+                <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={handleAddNote} disabled={saving || !note.trim()}>Add Note</button>
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
-      </main>
+
+        {/* Collapsible Log Action */}
+        <div className="mb-4">
+          <button
+            className="mb-2 px-3 py-1 bg-gray-200 rounded text-left w-full flex justify-between items-center"
+            onClick={() => setShowLogAction(s => !s)}
+          >
+            <span className="text-xl font-semibold">Log Action</span>
+            <span>{showLogAction ? '▲' : '▼'}</span>
+          </button>
+          {showLogAction && (
+            <div className="flex gap-2 mb-2">
+              <select className="border rounded px-3 py-2" value={action} onChange={e => setAction(e.target.value)}>
+                <option value="">Select Action</option>
+                <option value="call">Call</option>
+                <option value="visit">Visit</option>
+                <option value="demo">Demo</option>
+                <option value="payment">Payment</option>
+              </select>
+              <input
+                className="flex-1 border rounded px-3 py-2"
+                placeholder="Optional note..."
+                value={actionNote}
+                onChange={e => setActionNote(e.target.value)}
+                disabled={saving}
+              />
+              <button className="bg-green-600 text-white px-4 py-2 rounded" onClick={handleLogAction} disabled={saving || !action}>Log Action</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+
+  return (
+    <div>
+      {embed ? (
+        <Content />
+      ) : (
+        <div className="min-h-screen flex bg-gray-100">
+          <AdminSidebar />
+          <Content />
+        </div>
+      )}
     </div>
   );
 }

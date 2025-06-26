@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
   const role = session.user.role;
 
   const { searchParams } = new URL(req.url);
+  const subjectTypeParam = searchParams.get('subjectType');
+  const subjectIdParam = searchParams.get('subjectId');
   const filter = searchParams.get('filter'); // 'today', 'week', or undefined
 
   const now = new Date();
@@ -40,7 +42,16 @@ export async function GET(req: NextRequest) {
   }
 
   // Admin can see all if no filter
-  if (role === 'ADMIN' && !filter) {
+  // Filter by subject if provided – overrides default user filter
+  if (subjectTypeParam && subjectIdParam) {
+    Object.assign(where, {
+      subjectType: subjectTypeParam,
+      subjectIds: { array_contains: subjectIdParam },
+    });
+    delete where.OR; // remove user filter so all tasks for lead are shown
+  }
+
+  if (role === 'ADMIN' && !filter && !subjectTypeParam) {
     delete where.OR;
   }
 
@@ -70,12 +81,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Only admin can assign tasks to others' }, { status: 403 });
   }
 
+  if (!data.subjectType) {
+    return NextResponse.json({ error: 'Subject type is required' }, { status: 400 });
+  }
+
   const task = await prisma.task.create({
     data: {
       title: data.title,
       description: data.description,
       dueDate: new Date(data.dueDate),
       status: data.status || 'pending',
+      subjectType: data.subjectType,
+      subjectIds: data.subjectIds ?? [],
       assignedToId: data.assignedToId || null,
       createdById: userId,
     },

@@ -1,19 +1,24 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import AdminSidebar from '@/components/AdminSidebar';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 
-export default function NewTaskPage() {
+function NewTaskPageContent() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [subjectType, setSubjectType] = useState<'LEAD' | 'LEAD_GROUP' | 'STAGE'>('LEAD');
+  const [subjectIds, setSubjectIds] = useState<string[]>([]);
+  const [subjectOptions, setSubjectOptions] = useState<{ id: string; label: string }[]>([]);
+  const [subjectLoading, setSubjectLoading] = useState(false);
   // Assignment dropdown state
   const [assignedToId, setAssignedToId] = useState('');
   const [users, setUsers] = useState<{ id: string; name?: string | null; email: string }[]>([]);
@@ -30,11 +35,40 @@ export default function NewTaskPage() {
     }
   }, [isAdmin]);
 
+  // Initialize from query params once
+  useEffect(() => {
+    const typeParam = searchParams.get('subjectType') as 'LEAD' | 'LEAD_GROUP' | 'STAGE' | null;
+    const idsParam = searchParams.get('subjectIds');
+    if (typeParam) setSubjectType(typeParam);
+    if (idsParam) setSubjectIds(idsParam.split(',').filter(Boolean));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // load subjects whenever the type changes
+  useEffect(()=>{
+    const load = async () => {
+      setSubjectLoading(true);
+      let url = '';
+      switch(subjectType){
+        case 'LEAD': url='/api/leads?limit=1000'; break;
+        case 'LEAD_GROUP': url='/api/lead-groups?limit=1000'; break;
+        case 'STAGE': url='/api/stages'; break;
+      }
+      try{
+        const res=await fetch(url);
+        const data=await res.json();
+        const list = (data.items||data.leads||data.stages||[]).map((item:any)=>({id:item.id,label:item.name||item.email||item.title||item.id}));
+        setSubjectOptions(list);
+      }catch{setSubjectOptions([]);}finally{setSubjectLoading(false);}
+    };
+    load();
+  },[subjectType]);
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const payload: any = { title, description, dueDate };
+    const payload: any = { title, description, dueDate, subjectType, subjectIds };
     if (isAdmin && assignedToId) payload.assignedToId = assignedToId;
     const res = await fetch('/api/tasks', {
       method: 'POST',
@@ -86,6 +120,25 @@ export default function NewTaskPage() {
             <label className="block font-medium mb-1">Due Date</label>
             <input type="datetime-local" className="w-full border px-3 py-2 rounded" value={dueDate} onChange={e => setDueDate(e.target.value)} required />
           </div>
+          <div>
+            <label className="block font-medium mb-1">Subject Type</label>
+            <select className="w-full border px-3 py-2 rounded" value={subjectType} onChange={e=>setSubjectType(e.target.value as any)}>
+              <option value="LEAD">Lead</option>
+              <option value="LEAD_GROUP">Lead Group</option>
+              <option value="STAGE">Stage</option>
+            </select>
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Select Subject{subjectType==='LEAD_GROUP'?'s':''}</label>
+            <select multiple className="w-full border px-3 py-2 rounded h-32" value={subjectIds} onChange={e=>{
+              const opts = Array.from(e.target.selectedOptions).map(o=>o.value);
+              setSubjectIds(opts);
+            }} disabled={subjectLoading}>
+              {subjectOptions.map(opt=> (
+                <option key={opt.id} value={opt.id}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
           {error && <div className="text-red-600">{error}</div>}
           <div className="flex gap-3">
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" disabled={loading}>{loading ? 'Creating…' : 'Create Task'}</button>
@@ -94,5 +147,13 @@ export default function NewTaskPage() {
         </form>
       </main>
     </div>
+  );
+}
+
+export default function NewTaskPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Loading task creation form...</div>}>
+      <NewTaskPageContent />
+    </Suspense>
   );
 }

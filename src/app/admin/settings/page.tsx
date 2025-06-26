@@ -16,6 +16,9 @@ interface Action {
   name: string;
 }
 
+// String array for dispositions (no longer using id-based model)
+type Disposition = string;
+
 interface MessageTemplate {
   id: string;
   name: string;
@@ -40,6 +43,8 @@ export default function AdminSettingsPage() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [actionForm, setActionForm] = useState<Partial<Action>>({});
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
+  const [dispositionForm, setDispositionForm] = useState<string>("");
+  const [editingDisposition, setEditingDisposition] = useState<string | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [signupStageId, setSignupStageId] = useState<string>("");
@@ -48,12 +53,13 @@ export default function AdminSettingsPage() {
   const [webinarStageId, setWebinarStageId] = useState<string>("");
   const [watchedDemoStageId, setWatchedDemoStageId] = useState<string>("");
   const [actions, setActions] = useState<Action[]>([]);
+  const [dispositions, setDispositions] = useState<Disposition[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [availableAddons, setAvailableAddons] = useState<Addon[]>([]);
   const [addonForm, setAddonForm] = useState<Partial<Addon>>({});
   const [editingAddonId, setEditingAddonId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'academic' | 'addons' | 'stages' | 'actions' | 'defaults' | 'plans' | 'stageTemplates'>("academic");
+  const [activeTab, setActiveTab] = useState<'academic' | 'addons' | 'stages' | 'actions' | 'dispositions' | 'defaults' | 'plans' | 'stageTemplates'>("academic");
   const [stageTemplateMap, setStageTemplateMap] = useState<Record<string, string>>(/* stageId: templateId */{});
   const [savingStageTemplates, setSavingStageTemplates] = useState(false);
 
@@ -96,6 +102,16 @@ export default function AdminSettingsPage() {
       const actionsRes = await fetch("/api/action");
       const actionsJson = await actionsRes.json();
       setActions(actionsJson.result?.data || []);
+      
+          // Fetch dispositions from our Settings-based API
+      try {
+        const dispositionsRes = await fetch("/api/disposition");
+        const dispositionsJson = await dispositionsRes.json();
+        setDispositions(dispositionsJson.result?.data || []);
+      } catch (error) {
+        console.error("Error fetching dispositions:", error);
+        setDispositions([]);
+      }
 
       const addonsRes = await fetch('/api/setting?key=available_addons');
       const addonsJson = await addonsRes.json();
@@ -141,6 +157,9 @@ export default function AdminSettingsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key: "available_addons", value: availableAddons }),
         }),
+        // Save dispositions as a setting (fallback until dedicated API is fully implemented)
+        // Dispositions are now managed via the API
+        // No need to manually save to settings
       ]);
       Swal.fire({ icon: "success", title: "Settings Saved" });
       fetchData();
@@ -164,7 +183,7 @@ export default function AdminSettingsPage() {
           <h1 className="text-2xl font-bold mb-6">Admin Settings</h1>
 
           <div className="flex border-b mb-8 overflow-x-auto">
-            {['academic', 'addons', 'stages', 'actions', 'plans', 'defaults', 'stageTemplates'].map((tab) => (
+            {['academic', 'addons', 'stages', 'actions', 'dispositions', 'plans', 'defaults', 'stageTemplates'].map((tab) => (
               <button
                 key={tab}
                 className={`px-4 py-2 -mb-px border-b-2 font-medium transition-colors duration-200 ${
@@ -628,6 +647,107 @@ export default function AdminSettingsPage() {
                               body: JSON.stringify({ id: action.id }),
                             });
                             fetchData();
+                          }
+                        }}
+                      >Delete</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {activeTab === "dispositions" && (
+            <div>
+              <h2 className="font-bold text-lg mb-2">Manage Dispositions</h2>
+              <p className="text-sm text-gray-600 mb-4">Dispositions track the outcome of each logged lead action.</p>
+              <form
+                className="flex gap-2 mb-4"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!dispositionForm) return;
+                  
+                  // Add or update disposition
+                  try {
+                    if (editingDisposition) {
+                      // Update case - since we can't update names in our string-based approach,
+                      // we need to delete the old one and add the new one
+                      await fetch("/api/disposition", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: editingDisposition }),
+                      });
+                    }
+                    
+                    // Add the disposition
+                    await fetch("/api/disposition", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: dispositionForm }),
+                    });
+                    
+                    // Reset form and refresh data
+                    fetchData();
+                    setDispositionForm("");
+                    setEditingDisposition(null);
+                  } catch (error) {
+                    console.error("Error saving disposition:", error);
+                    Swal.fire({ icon: "error", title: "Error", text: "Failed to save disposition." });
+                  }
+                }}
+              >
+                <input
+                  className="border rounded px-3 py-2 flex-1"
+                  placeholder="Disposition Name"
+                  value={dispositionForm}
+                  onChange={(e) => setDispositionForm(e.target.value)}
+                  required
+                />
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+                  {editingDisposition ? "Update" : "Add"}
+                </button>
+                {editingDisposition && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditingDisposition(null); setDispositionForm(""); }}
+                    className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+                  >Cancel</button>
+                )}
+              </form>
+              <ul className="divide-y">
+                {dispositions.map((disposition, index) => (
+                  <li key={index} className="flex items-center justify-between py-2">
+                    <span>{disposition}</span>
+                    <div className="flex gap-2">
+                      <button
+                        className="text-blue-600 hover:underline text-sm"
+                        onClick={() => {
+                          setEditingDisposition(disposition);
+                          setDispositionForm(disposition);
+                        }}
+                      >Edit</button>
+                      <button
+                        className="text-red-600 hover:underline text-sm"
+                        onClick={async () => {
+                          const confirmed = await Swal.fire({
+                            title: "Are you sure?",
+                            text: "This will delete the disposition.",
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonText: "Yes, delete it!",
+                          });
+                          if (confirmed.isConfirmed) {
+                            try {
+                              await fetch("/api/disposition", {
+                                method: "DELETE",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ name: disposition }),
+                              });
+                              fetchData();
+                            } catch (error) {
+                              console.error("Error deleting disposition:", error);
+                              Swal.fire({ icon: "error", title: "Error", text: "Failed to delete disposition." });
+                            }
                           }
                         }}
                       >Delete</button>
