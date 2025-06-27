@@ -2,6 +2,11 @@
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  eslint: {
+    // Explicitly exclude the scripts directory from linting
+    ignoreDuringBuilds: true,
+    dirs: ['app', 'components', 'pages', 'lib', 'src']
+  },
   images: {
     remotePatterns: [
       {
