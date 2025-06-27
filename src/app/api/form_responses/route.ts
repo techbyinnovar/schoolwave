@@ -13,8 +13,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
       }
     }
+    // Try to find a lead by email first
     let lead = await prisma.lead.findUnique({ where: { email: data.email } });
+    let isExistingLead = false;
+    
+    // If not found by email, try to find by phone
+    if (!lead && data.phone) {
+      const leadByPhone = await prisma.lead.findFirst({
+        where: { phone: data.phone },
+      });
+      if (leadByPhone) lead = leadByPhone;
+    }
+    
     if (!lead) {
+      // Create a new lead if one doesn't exist
       lead = await prisma.lead.create({
         data: {
           name: data.name,
@@ -24,9 +36,53 @@ export async function POST(req: NextRequest) {
           stageId: data.stageId || null, // fallback if not provided
         },
       });
-    } else if (data.stageId) {
-      // Optionally update stage if form specifies
-      await prisma.lead.update({ where: { id: lead.id }, data: { stageId: data.stageId } });
+    } else {
+      // Using existing lead
+      isExistingLead = true;
+      
+      // Store the old lead information before updating
+      const oldLeadInfo = {
+        name: lead.name,
+        phone: lead.phone,
+        schoolName: lead.schoolName,
+        stageId: lead.stageId
+      };
+      
+      // Prepare the new lead data
+      const updateData = {
+        name: data.name || lead.name,
+        phone: data.phone || lead.phone,
+        schoolName: data.schoolName || lead.schoolName,
+        stageId: data.stageId || lead.stageId
+      };
+      
+      // Update existing lead with any new information
+      lead = await prisma.lead.update({ 
+        where: { id: lead.id }, 
+        data: updateData
+      });
+      
+      // Log changes if any field was actually updated
+      let changesDetected = false;
+      const changeLog = ['Lead information updated during form submission:'];
+      
+      for (const [key, newValue] of Object.entries(updateData)) {
+        // Check if this field in updateData is different from the old value
+        if (newValue !== oldLeadInfo[key as keyof typeof oldLeadInfo]) {
+          changesDetected = true;
+          changeLog.push(`- ${key}: "${oldLeadInfo[key as keyof typeof oldLeadInfo] || '(not set)'}" → "${newValue || '(not set)'}"`);
+        }
+      }
+      
+      // If changes were made, create a note about them
+      if (changesDetected) {
+        await prisma.note.create({
+          data: {
+            leadId: lead.id,
+            content: changeLog.join('\n')
+          }
+        });
+      }
     }
     // Store response
     if (!data.responseData || typeof data.responseData !== 'object') {
@@ -42,14 +98,29 @@ export async function POST(req: NextRequest) {
 
     // Fetch form name
     const form = await prisma.form.findUnique({ where: { id: data.formId } });
-    let noteContent = `Form submitted: ${form?.name || data.formId}\n`;
+    
+    // Prepare note content
+    let noteContent = '';
+    
+    // Add existing lead marker if applicable
+    if (isExistingLead) {
+      noteContent += `[EXISTING LEAD] `;
+    }
+    
+    // Add form details
+    noteContent += `Form submitted: ${form?.name || data.formId}\n`;
+    
+    // Add form field values
     for (const [key, value] of Object.entries(data.responseData)) {
       noteContent += `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}\n`;
     }
+    
+    // Create the note
     await prisma.note.create({
       data: {
         leadId: lead.id,
         content: noteContent,
+        // Note: The Note model doesn't have a type field, so we'll include the info in content
       },
     });
 

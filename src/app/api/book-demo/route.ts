@@ -10,9 +10,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // 1. Find or create Lead by email
+    // 1. Find or create Lead by email or phone
     let lead = await prisma.lead.findUnique({ where: { email } });
+    let isExistingLead = false;
+    
+    // If not found by email, try to find by phone
+    if (!lead && phone) {
+      const leadByPhone = await prisma.lead.findFirst({
+        where: { phone },
+      });
+      if (leadByPhone) lead = leadByPhone;
+    }
+    
     if (!lead) {
+      // Create new lead if doesn't exist
       lead = await prisma.lead.create({
         data: {
           name,
@@ -23,14 +34,69 @@ export async function POST(req: NextRequest) {
           numberOfStudents: numStudents ? String(numStudents) : undefined,
         },
       });
+    } else {
+      // Store the old lead information before updating
+      const oldLeadInfo = {
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+        schoolName: lead.schoolName,
+        address: lead.address,
+        numberOfStudents: lead.numberOfStudents
+      };
+      
+      // Prepare the new lead data
+      const updateData = {
+        name: name || lead.name,
+        phone: phone || lead.phone,
+        email: email || lead.email,
+        schoolName: schoolName || lead.schoolName,
+        address: address || lead.address,
+        numberOfStudents: numStudents ? String(numStudents) : lead.numberOfStudents,
+      };
+      
+      // Update existing lead with any new information
+      lead = await prisma.lead.update({
+        where: { id: lead.id },
+        data: updateData
+      });
+      
+      // Log changes if any field was actually updated
+      let changesDetected = false;
+      const changeLog = ['Lead information updated during demo booking:'];
+      
+      for (const [key, newValue] of Object.entries(updateData)) {
+        // Check if this field in updateData is different from the old value
+        if (newValue !== oldLeadInfo[key as keyof typeof oldLeadInfo]) {
+          changesDetected = true;
+          changeLog.push(`- ${key}: "${oldLeadInfo[key as keyof typeof oldLeadInfo] || '(not set)'}" → "${newValue || '(not set)'}"`);
+        }
+      }
+      
+      // If changes were made, create a note about them
+      if (changesDetected) {
+        await prisma.note.create({
+          data: {
+            leadId: lead.id,
+            content: changeLog.join('\n')
+          }
+        });
+      }
     }
 
     // 2. Log a note for the lead
-    const noteContent = note || `Demo requested for ${demoDate} at ${demoTime}`;
+    let noteContent = note || `Demo requested for ${demoDate} at ${demoTime}`;
+    
+    // If we're using an existing lead, add that context to the note
+    if (isExistingLead) {
+      noteContent = `[EXISTING LEAD] ${noteContent}`;
+    }
+    
     await prisma.note.create({
       data: {
         leadId: lead.id,
         content: noteContent,
+        // Note: The Note model doesn't have a type field
       },
     });
 
