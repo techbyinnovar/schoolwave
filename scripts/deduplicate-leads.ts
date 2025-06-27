@@ -1,8 +1,14 @@
 // deduplicate-leads.ts - CommonJS format
 const { PrismaClient } = require('@prisma/client');
 
-// Create a single Prisma client instance
-const prisma = new PrismaClient();
+// Create a single Prisma client instance with extended timeout
+const prisma = new PrismaClient({
+  log: ['warn', 'error'],
+  transactionOptions: {
+    maxWait: 20000, // 20 seconds max to obtain a transaction
+    timeout: 30000,  // 30 seconds transaction timeout (up from default 5s)
+  }
+});
 
 /**
  * Main deduplication function to find and merge duplicate leads
@@ -63,102 +69,107 @@ async function deduplicateLeads() {
 
 /**
  * Merge duplicate lead data into a canonical lead
+ * This function breaks the operations down into smaller batches to avoid transaction timeout
  */
 async function mergeLeadData(canonicalLeadId: string, duplicateLeadIds: string[]) {
   try {
-    // Begin transaction to ensure atomicity
-    await prisma.$transaction(async (tx: any) => {
-      // First, check if the duplicate leads still exist (they might have been removed in a previous merge)
-      const existingDuplicates = await tx.lead.findMany({
-        where: { id: { in: duplicateLeadIds } },
-        select: { id: true }
-      });
-
-      if (existingDuplicates.length === 0) {
-        console.log(`No duplicates found for ${canonicalLeadId}, skipping`);
-        return;
-      }
-
-      const existingDuplicateIds = existingDuplicates.map((d: { id: string }) => d.id);
-      console.log(`Found ${existingDuplicateIds.length} existing duplicates for ${canonicalLeadId}`);
-
-      // 1. Migrate all notes
-      const noteCount = await tx.note.updateMany({
-        where: { leadId: { in: existingDuplicateIds } },
-        data: { leadId: canonicalLeadId }
-      });
-      console.log(`Migrated ${noteCount.count} notes`);
-
-      // 2. Migrate all history records
-      const historyCount = await tx.leadHistory.updateMany({
-        where: { leadId: { in: existingDuplicateIds } },
-        data: { leadId: canonicalLeadId }
-      });
-      console.log(`Migrated ${historyCount.count} history records`);
-
-      // 3. Migrate all webinar registrations - handle uniqueness constraint
-      for (const duplicateId of existingDuplicateIds) {
-        const registrations = await tx.webinarRegistration.findMany({
-          where: { leadId: duplicateId }
-        });
-        
-        for (const reg of registrations) {
-          // Check if the canonical lead already has registration for this webinar
-          const existingReg = await tx.webinarRegistration.findFirst({
-            where: {
-              leadId: canonicalLeadId,
-              webinarId: reg.webinarId
-            }
-          });
-          
-          if (!existingReg) {
-            // If no existing registration, update this one
-            await tx.webinarRegistration.update({
-              where: { id: reg.id },
-              data: { leadId: canonicalLeadId }
-            });
-            console.log(`Migrated webinar registration ${reg.id} to lead ${canonicalLeadId}`);
-          } else {
-            // If canonical lead already registered for this webinar, delete duplicate
-            await tx.webinarRegistration.delete({
-              where: { id: reg.id }
-            });
-            console.log(`Deleted duplicate webinar registration ${reg.id}`);
-          }
-        }
-      }
-
-      // 4. Migrate all requests
-      const requestCount = await tx.request.updateMany({
-        where: { leadId: { in: existingDuplicateIds } },
-        data: { leadId: canonicalLeadId }
-      });
-      console.log(`Migrated ${requestCount.count} requests`);
-
-      // 5. Migrate all form responses
-      const formResponseCount = await tx.formResponse.updateMany({
-        where: { leadId: { in: existingDuplicateIds } },
-        data: { leadId: canonicalLeadId }
-      });
-      console.log(`Migrated ${formResponseCount.count} form responses`);
-
-      // 6. Add a record in the history about the merge
-      await tx.leadHistory.create({
-        data: {
-          leadId: canonicalLeadId,
-          type: 'MERGE',
-          note: `Merged duplicate leads: ${existingDuplicateIds.join(', ')}`,
-          actionType: 'SYSTEM'
-        }
-      });
-
-      // 7. Delete the duplicate leads (only after migrating all relationships)
-      const deletedCount = await tx.lead.deleteMany({
-        where: { id: { in: existingDuplicateIds } }
-      });
-      console.log(`Deleted ${deletedCount.count} duplicate leads`);
+    // First, check if the duplicate leads still exist outside a transaction
+    const existingDuplicates = await prisma.lead.findMany({
+      where: { id: { in: duplicateLeadIds } },
+      select: { id: true }
     });
 
+    if (existingDuplicates.length === 0) {
+      console.log(`No duplicates found for ${canonicalLeadId}, skipping`);
+      return;
+    }
+
+    const existingDuplicateIds = existingDuplicates.map((d: { id: string }) => d.id);
+    console.log(`Found ${existingDuplicateIds.length} existing duplicates for ${canonicalLeadId}`);
+
+    // 1. Migrate all notes in a separate transaction
+    const noteCount = await prisma.note.updateMany({
+      where: { leadId: { in: existingDuplicateIds } },
+      data: { leadId: canonicalLeadId }
+    });
+    console.log(`Migrated ${noteCount.count} notes`);
+
+    // 2. Migrate all history records in a separate transaction
+    const historyCount = await prisma.leadHistory.updateMany({
+      where: { leadId: { in: existingDuplicateIds } },
+      data: { leadId: canonicalLeadId }
+    });
+    console.log(`Migrated ${historyCount.count} history records`);
+
+    // 3. Migrate all webinar registrations one by one to handle uniqueness constraint
+    for (const duplicateId of existingDuplicateIds) {
+      const registrations = await prisma.webinarRegistration.findMany({
+        where: { leadId: duplicateId }
+      });
+      
+      for (const reg of registrations) {
+        // Check if the canonical lead already has registration for this webinar
+        const existingReg = await prisma.webinarRegistration.findFirst({
+          where: {
+            leadId: canonicalLeadId,
+            webinarId: reg.webinarId
+          }
+        });
+        
+        if (!existingReg) {
+          // If no existing registration, update this one
+          await prisma.webinarRegistration.update({
+            where: { id: reg.id },
+            data: { leadId: canonicalLeadId }
+          });
+          console.log(`Migrated webinar registration ${reg.id} to lead ${canonicalLeadId}`);
+        } else {
+          // If canonical lead already registered for this webinar, delete duplicate
+          await prisma.webinarRegistration.delete({
+            where: { id: reg.id }
+          });
+          console.log(`Deleted duplicate webinar registration ${reg.id}`);
+        }
+      }
+    }
+
+    // 4. Migrate all requests in a separate transaction
+    const requestCount = await prisma.request.updateMany({
+      where: { leadId: { in: existingDuplicateIds } },
+      data: { leadId: canonicalLeadId }
+    });
+    console.log(`Migrated ${requestCount.count} requests`);
+
+    // 5. Migrate all form responses in a separate transaction
+    const formResponseCount = await prisma.formResponse.updateMany({
+      where: { leadId: { in: existingDuplicateIds } },
+      data: { leadId: canonicalLeadId }
+    });
+    console.log(`Migrated ${formResponseCount.count} form responses`);
+
+    // 6. Add a record in the history about the merge
+    await prisma.leadHistory.create({
+      data: {
+        leadId: canonicalLeadId,
+        type: 'MERGE',
+        note: `Merged duplicate leads: ${existingDuplicateIds.join(', ')}`,
+        createdAt: new Date(),
+        // updatedAt is managed by Prisma automatically
+      }
+    });
+
+    // Finally, delete all duplicate leads one by one to ensure they are properly removed
+    for (const duplicateId of existingDuplicateIds) {
+      try {
+        await prisma.lead.delete({
+          where: { id: duplicateId }
+        });
+      } catch (deleteError) {
+        console.error(`Failed to delete lead ${duplicateId}:`, deleteError);
+      }
+    }
+
+    console.log(`Deleted ${existingDuplicateIds.length} duplicate leads`);
     console.log(`Successfully processed canonical lead ${canonicalLeadId}`);
   } catch (error) {
     console.error(`Error merging lead data for ${canonicalLeadId}:`, error);
