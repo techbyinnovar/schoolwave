@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
-import { getToken } from 'next-auth/jwt';
+import { auth } from '../../auth';
 import { sendTemplateToLead } from './lead/sendTemplateToLead';
 import type { MessageTemplate } from 'types/messageTemplate';
 
 export async function POST(req: NextRequest) {
   try {
-    // Authenticate
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-    if (!token || !token.sub) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    // Authenticate using modern auth() approach
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = session.user.id; // Get user ID from session
+    
+    // Log authentication success for debugging
+    console.log('Send message authenticated for user:', userId);
 
     // Parse request
     const { leadIds, medium, subject, body, templateId } = await req.json();
