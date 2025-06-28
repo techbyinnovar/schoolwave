@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
-import { getToken } from 'next-auth/jwt';
+import { auth } from '../../../auth';
 
 // Get all message templates (GET /api/messages)
 export async function GET(req: NextRequest) {
@@ -16,11 +16,12 @@ export async function GET(req: NextRequest) {
 // Create a new message template (POST /api/messages)
 export async function POST(req: NextRequest) {
   try {
-    // Use NextAuth's getToken to get the session in API routes
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-    if (!token || !token.sub) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    // Use modern auth approach for session management
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = session.user.id; // Get user ID from session
 
     // Parse request body
     const body = await req.json();
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
         emailAttachments,
         whatsappText,
         whatsappImages,
-        createdById: token.sub as string, // token.sub contains the user ID
+        createdById: userId, // Using userId from the session
       },
     });
 
@@ -56,28 +57,17 @@ export async function POST(req: NextRequest) {
 // Update an existing message template (PATCH /api/messages/:id)
 export async function PATCH(req: NextRequest) {
   try {
-    // Get all cookies for debugging
-    console.log('All cookies:', Object.fromEntries(req.cookies.getAll().map(c => [c.name, c.value])));
-    
-    // Get the session token from cookies - try all possible cookie names
-    const sessionToken = 
-      req.cookies.get('next-auth.session-token')?.value || 
-      req.cookies.get('__Secure-next-auth.session-token')?.value ||
-      req.cookies.get('__Host-next-auth.session-token')?.value;
-      
-    if (!sessionToken) {
-      console.error('No session token found in cookies');
+    // Use modern auth approach for session management
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = session.user.id; // Get user ID from session
     
-    // Use NextAuth's getToken to get the session in API routes
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-    if (!token || !token.sub) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    if (!token.role || token.role !== 'ADMIN') {
-      console.error('Unauthorized or missing role in token', { token });
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Check if user has admin role
+    if (!session.user.role || session.user.role !== 'ADMIN') {
+      console.error('Unauthorized or missing admin role', { session });
+      return NextResponse.json({ error: 'Unauthorized - Admin role required' }, { status: 401 });
     }
     
     // Extract ID from URL

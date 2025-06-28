@@ -1,14 +1,23 @@
 // Mark page as client-only with 'use client' directive
 "use client";
-import React from "react";
-import dynamic from "next/dynamic";
+import React, { useEffect, useState } from "react";
+import NewMessageTemplatePageClient from "./NewMessageTemplatePageClient";
 
-// Using absolute path and explicit chunk name for better production compatibility
-const NewMessageTemplatePageClient = dynamic(
-  () => import(/* webpackChunkName: "message-template-client" */ "@/app/admin/messages/new/NewMessageTemplatePageClient"),
-  { ssr: false, loading: () => <div className="p-8">Loading message template editor...</div> }
-);
+// Simple client-only wrapper component
+function ClientOnly({ children }: { children: React.ReactNode }) {
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  return isClient ? <>{children}</> : <div className="p-8">Loading message template editor...</div>;
+}
 
 export default function Page() {
-  return <NewMessageTemplatePageClient />;
+  return (
+    <ClientOnly>
+      <NewMessageTemplatePageClient />
+    </ClientOnly>
+  );
 }
