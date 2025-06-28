@@ -5,8 +5,15 @@ import { auth } from '../../../auth';
 // Get all message templates (GET /api/messages)
 export async function GET(req: NextRequest) {
   try {
-    // You can add authentication here if needed
+    // Use modern auth approach for session management
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    console.log('Fetching message templates for user:', session.user.id);
     const messages = await prisma.messageTemplate.findMany();
+    console.log('Found templates:', messages.length);
     return NextResponse.json(messages);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch messages', details: (error as any)?.message }, { status: 500 });
