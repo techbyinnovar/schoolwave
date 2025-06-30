@@ -1,5 +1,5 @@
 import { sendSmtpMail } from "@/utils/smtpMailer";
-import { sendWhatsAppMessage } from '@/utils/whatsapp';
+import { sendWhatsAppMessage } from '@/utils/whatsappApi';
 import { db as prisma } from '@/lib/db';
 
 /**
@@ -91,16 +91,17 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
   let waStatus = 'not attempted';
   let waNote = '';
   if (lead.phone && template.whatsappText) {
-    try {
-      await sendWhatsAppMessage({
-        to: lead.phone,
-        message: render(template.whatsappText),
-      });
+    const result = await sendWhatsAppMessage(
+      lead.phone,
+      render(template.whatsappText)
+    );
+    
+    if (result.success) {
       waStatus = 'success';
       waNote = 'WhatsApp message sent successfully.';
-    } catch (err) {
+    } else {
       waStatus = 'error';
-      waNote = `WhatsApp failed: ${err instanceof Error ? err.message : String(err)}`;
+      waNote = `WhatsApp failed: ${result.error || 'Unknown error'}`;
     }
     await prisma.leadHistory.create({
       data: {

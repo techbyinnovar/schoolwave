@@ -63,7 +63,7 @@ function SubscriptionRow({ sub, loading, setLoading, setError }: any) {
   }, [sub.id]);
   return (
     <tr>
-      <td className="p-2 border">{sub.customer?.name}</td>
+      <td className="p-2 border">{sub.Customer?.name}</td>
       <td className="p-2 border">{new Date(sub.startDate).toLocaleDateString()}</td>
       <td className="p-2 border">{sub.term?.name}{sub.term?.academicYear ? ` (${sub.term.academicYear.name})` : ''}</td>
       <td className="p-2 border">{sub.studentCount}</td>

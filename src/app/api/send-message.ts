@@ -3,6 +3,7 @@ import { db as prisma } from '@/lib/db';
 import { auth } from '../../auth';
 import { sendTemplateToLead } from './lead/sendTemplateToLead';
 import type { MessageTemplate } from 'types/messageTemplate';
+import { sendWhatsAppMessage } from '@/utils/whatsappApi';
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,20 +53,48 @@ export async function POST(req: NextRequest) {
           emailAttachments: [],
           whatsappText: medium === 'whatsapp' ? body ?? '' : '',
           whatsappImages: [],
-          createdById: token.sub,
+          createdById: userId, // Using userId from auth() session
           createdAt: new Date(),
           updatedAt: new Date(),
         };
       }
-      // Use existing logic
-      await sendTemplateToLead({
-        lead,
-        agent: lead.agent,
-        template: usedTemplate,
-        userId: token.sub,
-        fromStage: null,
-        toStage: null,
-      });
+      if (medium === 'whatsapp') {
+        // Use WhatsApp API to send the message directly
+        try {
+          console.log('Sending WhatsApp message to', lead.phone);
+          
+          // Get the WhatsApp content
+          const whatsappText = usedTemplate.whatsappText || body || '';
+          const whatsappImages = usedTemplate.whatsappImages || [];
+          
+          // If there are images, send them with the text
+          if (whatsappImages && whatsappImages.length > 0) {
+            await sendWhatsAppMessage(
+              lead.phone,
+              whatsappText,
+              whatsappImages.map((img: any) => img.url)
+            );
+          } else {
+            // Otherwise just send text
+            await sendWhatsAppMessage(lead.phone, whatsappText);
+          }
+          
+          console.log('WhatsApp message sent successfully to', lead.phone);
+        } catch (error) {
+          console.error('Error sending WhatsApp message:', error);
+          // Continue to create logs even if WhatsApp sending fails
+        }
+      } else {
+        // Use existing email sending logic for email medium
+        await sendTemplateToLead({
+          lead,
+          agent: lead.agent,
+          template: usedTemplate,
+          userId: userId,
+          fromStage: null,
+          toStage: null,
+        });
+      }
       // Create a message record
       await prisma.message.create({
         data: {
@@ -73,7 +102,7 @@ export async function POST(req: NextRequest) {
           body: medium === 'email' ? usedTemplate.emailHtml || '' : usedTemplate.whatsappText || '',
           status: 'SENT',
           senderType: 'USER',
-          senderId: token.sub,
+          senderId: userId, // Updated to use userId from auth() session
           recipient: medium === 'email' ? lead.email : lead.phone,
           templateId: templateId || null,
         },

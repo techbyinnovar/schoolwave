@@ -1,8 +1,10 @@
 /*
-  Warnings:
-
-  - A unique constraint covering the columns `[email]` on the table `Lead` will be added. If there are existing duplicate values, this will fail.
-
+  This migration was originally intended to add a unique constraint to Lead.email,
+  but the constraint was later removed. This file has been modified to match
+  the current database state.
 */
--- CreateIndex
-CREATE UNIQUE INDEX "Lead_email_key" ON "Lead"("email");
+
+-- Original code was:
+-- CREATE UNIQUE INDEX "Lead_email_key" ON "Lead"("email");
+
+-- Now it's an empty migration to reflect that the constraint doesn't exist

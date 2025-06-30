@@ -1,5 +1,6 @@
-import { prisma } from 'lib/prisma';
+import { db as prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 // Utility: fetch settings by key
 async function fetchSetting(key: string) {
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     
     const invoice = await prisma.invoice.create({
       data: {
+        id: crypto.randomUUID(), // Generate UUID for invoice ID
         invoiceNumber,
         amount: invoiceTotal,
         status: 'pending',
@@ -110,8 +112,55 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         customerId: subscription.customerId,
         subscriptionId: subscription.id,
         lineItems,
+        updatedAt: new Date(), // Add updatedAt timestamp
       }
     });
+    
+    // Log this as a customer action directly in SQL to avoid prisma client issues
+    if (subscription.customerId) {
+      // Format amount for display in note
+      const formattedAmount = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'NGN'
+      }).format(invoiceTotal || 0);
+      
+      // Create action entry directly in the database using raw query
+      try {
+        // Using raw SQL to avoid Prisma client model issues
+        await prisma.$executeRaw`
+          INSERT INTO "EntityHistory" (
+            "id", "type", "entityType", "customerId", "actionType", "note", "createdAt"
+          ) VALUES (
+            ${crypto.randomUUID()}, 'action', 'customer', ${subscription.customerId}, 'invoice', 
+            ${`Subscription invoice #${invoiceNumber} created for ${formattedAmount}`}, ${new Date()}
+          )
+        `;
+        
+        // Log success for debugging
+        console.log('Successfully logged customer action for invoice:', invoiceNumber);
+        
+        // Additionally, create a customer note using the Prisma client
+        try {
+          await prisma.note.create({
+            data: {
+              id: crypto.randomUUID(),
+              content: `Subscription invoice #${invoiceNumber} created for ${formattedAmount}`,
+              customerId: subscription.customerId,
+              userId: null, // No user session in API context
+              entityType: 'customer'
+            } as any // Type assertion to bypass TypeScript errors due to schema drift
+          });
+          console.log('Successfully created customer note for invoice:', invoiceNumber);
+        } catch (noteError) {
+          console.error('Failed to create customer note:', noteError);
+        }
+      } catch (error) {
+        // Log the error but don't fail the invoice creation
+        console.error('Failed to log customer action:', error);
+        console.error(error);
+      }
+    }
+    
     return NextResponse.json(invoice);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to generate invoice', details: (error as any)?.message }, { status: 400 });

@@ -1,6 +1,17 @@
 "use client";
 import React, { useEffect, useState } from "react";
 
+// Function to get color class based on status
+function getStatusColor(status: string): string {
+  switch (status?.toLowerCase()) {
+    case 'draft': return 'bg-gray-100 text-gray-800';
+    case 'pending': return 'bg-yellow-100 text-yellow-800';
+    case 'paid': return 'bg-green-100 text-green-800';
+    case 'canceled': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100';
+  }
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -13,6 +24,7 @@ interface Invoice {
   dueDate: string;
   customerId: string;
   customer: Customer;
+  Customer: Customer; // Support for capitalized relation field
   createdAt: string;
   updatedAt: string;
 }
@@ -22,6 +34,7 @@ export default function InvoicePage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [form, setForm] = useState<Partial<Invoice>>({});
   const [loading, setLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState<{[key: string]: boolean}>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,11 +48,51 @@ export default function InvoicePage() {
     try {
       const res = await fetch("/api/invoice");
       const data = await res.json();
-      setInvoices(data);
+      
+      // Ensure data is always an array
+      if (Array.isArray(data)) {
+        setInvoices(data);
+      } else {
+        console.error('API response is not an array:', data);
+        setInvoices([]);
+        setError("Invalid invoice data format received");
+      }
     } catch (err: any) {
+      console.error('Error fetching invoices:', err);
       setError("Failed to fetch invoices");
+      setInvoices([]);
     } finally {
       setLoading(false);
+    }
+  }
+  
+  // Handle invoice status change
+  async function handleStatusChange(invoiceId: string, newStatus: string) {
+    if (statusLoading[invoiceId]) return; // Prevent multiple simultaneous updates
+    
+    setStatusLoading(prev => ({ ...prev, [invoiceId]: true }));
+    setError(null);
+    
+    try {
+      const res = await fetch(`/api/invoice/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update invoice status');
+      }
+      
+      // Update the invoice in the local state
+      setInvoices(prev => prev.map(inv => 
+        inv.id === invoiceId ? { ...inv, status: newStatus } : inv
+      ));
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setStatusLoading(prev => ({ ...prev, [invoiceId]: false }));
     }
   }
 
@@ -94,13 +147,17 @@ export default function InvoicePage() {
           onChange={e => setForm(f => ({ ...f, amount: parseFloat(e.target.value) }))}
           required
         />
-        <input
+        <select
           className="border p-2 rounded"
-          placeholder="Status"
-          value={form.status || ""}
+          value={form.status || "draft"}
           onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
           required
-        />
+        >
+          <option value="draft">Draft</option>
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="canceled">Canceled</option>
+        </select>
         <input
           className="border p-2 rounded"
           placeholder="Due Date"
@@ -130,17 +187,40 @@ export default function InvoicePage() {
             </tr>
           </thead>
           <tbody>
-            {invoices.map((inv) => (
+            {Array.isArray(invoices) && invoices.map((inv) => (
               <tr
                 key={inv.id}
-                className="cursor-pointer hover:bg-gray-100"
-                onClick={() => window.location.href = `/admin/invoice/${inv.id}`}
+                className="hover:bg-gray-100"
               >
-                <td className="p-2 border">{inv.customer?.name}</td>
-                <td className="p-2 border">{inv.amount}</td>
-                <td className="p-2 border">{inv.status}</td>
-                <td className="p-2 border">{new Date(inv.dueDate).toLocaleDateString()}</td>
-                <td className="p-2 border">{new Date(inv.createdAt).toLocaleString()}</td>
+                <td className="p-2 border cursor-pointer" onClick={() => window.location.href = `/admin/invoice/${inv.id}`}>
+                  {inv.customer?.name || inv.Customer?.name}
+                </td>
+                <td className="p-2 border cursor-pointer" onClick={() => window.location.href = `/admin/invoice/${inv.id}`}>
+                  {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(inv.amount)}
+                </td>
+                <td className="p-2 border">
+                  <select
+                    className={`border rounded p-1 ${getStatusColor(inv.status)}`}
+                    value={inv.status}
+                    onChange={(e) => handleStatusChange(inv.id, e.target.value)}
+                    disabled={statusLoading[inv.id]}
+                    onClick={(e) => e.stopPropagation()} // Prevent row click when selecting
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="canceled">Canceled</option>
+                  </select>
+                  {statusLoading[inv.id] && (
+                    <span className="ml-2 text-xs">Updating...</span>
+                  )}
+                </td>
+                <td className="p-2 border cursor-pointer" onClick={() => window.location.href = `/admin/invoice/${inv.id}`}>
+                  {new Date(inv.dueDate).toLocaleDateString()}
+                </td>
+                <td className="p-2 border cursor-pointer" onClick={() => window.location.href = `/admin/invoice/${inv.id}`}>
+                  {new Date(inv.createdAt).toLocaleString()}
+                </td>
               </tr>
             ))}
           </tbody>

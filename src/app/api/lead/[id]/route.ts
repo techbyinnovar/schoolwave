@@ -58,7 +58,14 @@ export async function PATCH(
 
   const filteredUpdate: any = {};
   for (const key of allowedFields) {
-    if (data[key] !== undefined) filteredUpdate[key] = data[key];
+    if (data[key] !== undefined) {
+      // Convert empty strings to null for foreign key fields
+      if ((key === 'ownedById' || key === 'assignedTo' || key === 'stageId') && data[key] === '') {
+        filteredUpdate[key] = null;
+      } else {
+        filteredUpdate[key] = data[key];
+      }
+    }
   }
 
   try {

@@ -285,7 +285,15 @@ export default function LeadTable({ leads, agents, stages, userRole, onSelectLea
                   <td className="border px-4 py-2 group-hover:font-semibold">{lead.demoCode ?? <span className="italic text-gray-400">N/A</span>}</td>
                   <td className="border px-4 py-2 whitespace-nowrap space-x-2">
                     <button className="text-blue-600 hover:underline" onClick={()=>router.push(`/tasks/new?subjectType=LEAD&subjectIds=${lead.id}`)}>Add Task</button>
-                    <button className="text-blue-600 hover:underline">Edit</button>
+                    <button 
+                      className="text-blue-600 hover:underline" 
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click handler from firing
+                        router.push(`/admin/crm/lead/${lead.id}/edit`);
+                      }}
+                    >
+                      Edit
+                    </button>
                     {userRole !== "AGENT" && (
                       <button className="text-red-600 hover:underline">Delete</button>
                     )}

@@ -1,147 +1,370 @@
-// Prisma schema for SchoolWave CRM/CMS
-
-model Blog {
-  id          String    @id @default(uuid())
-  title       String
-  slug        String    @unique
-  content     String    @db.Text
-  excerpt     String?   @db.Text
-  coverImage  String?
-  published   Boolean   @default(false)
-  publishedAt DateTime?
-  authorId    String
-  author      User      @relation("UserBlogPosts", fields: [authorId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // New fields inspired by PocketBase
-  featured    Boolean   @default(false)
-  category    String?   // For now, simple text. Can be evolved to a relation.
-  keyphrase   String?
-  tags        String?   // For now, simple text (e.g., comma-separated). Can be evolved.
-
-  @@map("blogs")
-}
-
-model Asset {
-  id          String    @id @default(uuid())
-  title       String
-  description String    @db.Text
-  files       Json?     // Array of file objects: [{ url, name, type }]
-  links       Json?     // Array of link objects: [{ url, label }]
-  published   Boolean   @default(false)
-  createdById String
-  createdBy   User      @relation("UserAssets", fields: [createdById], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  // Optionally: tags, category, etc.
-  @@map("assets")
-}
-
-
-
-model Webinar {
-  id              String    @id @default(cuid()) // Using cuid() for consistency if other models use it, or uuid()
-  title           String
-  slug            String    @unique
-  subtitle        String?
-  description     String?   @db.Text
-  coverImage      String?
-  dateTime        DateTime  // Combined date and time
-  durationMinutes Int?      // Duration in minutes
-  platform        String?   // e.g., "Zoom", "Google Meet", "Online"
-  
-  facilitators    Json?     // JSON field for a list of facilitators: [{ name: "John Doe", title: "Expert", bio: "...", imageUrl: "..." }]
-  learningObjectives Json?    // Array of objects: e.g., [{ title: "Objective Title 1", content: "Details..." }]
-  targetAudience     Json?    // Array of objects: e.g., [{ title: "School Owners", description: "..."}]
-  whyAttendReasons   Json?    // Array of objects: e.g., [{ title: "Reason Title 1", description: "Reason Description 1" }]
-  whyAttendParagraph String?  @db.Text // Main paragraph for the 'Why Attend' section
-  whyAttendHighlight String?  // Final highlight point for the 'Why Attend' section
-
-  isFree          Boolean   @default(true)
-  price           Float?    // Only relevant if isFree is false
-  
-  attendeeLimit   Int?
-  registrationOpen Boolean  @default(true) // To control if new registrations are accepted
-
-  published       Boolean   @default(false)
-  publishedAt     DateTime?
-
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Optional: For categorization and filtering
-  category        String?
-  tags            String?   // Comma-separated or consider a separate Tag model
-
-  // Relation to User who created/manages this webinar
-  authorId        String?   
-  author          User?     @relation("UserWebinars", fields: [authorId], references: [id])
-  registrations   WebinarRegistration[]
-
-  @@map("webinars")
-}
-
-model WebinarRegistration {
-  id            String   @id @default(cuid())
-  webinarId     String
-  webinar       Webinar  @relation(fields: [webinarId], references: [id], onDelete: Cascade)
-
-  leadId        String   // Each registration is linked to a Lead
-  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade) // Link to the Lead
-
-  // Optional: Link to an existing User if the registrant is logged in and is an existing User
-  userId        String?
-  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  registeredAt  DateTime @default(now())
-  paymentStatus String?  // e.g., "PAID", "PENDING_PAYMENT", "FREE"
-  attended      Boolean? @default(false)
-
-  @@unique([webinarId, leadId]) // Ensures a lead registers only once per webinar
-  @@map("webinar_registrations")
-}
-
-// User roles: ADMIN, CONTENT_ADMIN, AGENT
-
-model Task {
-  id           String   @id @default(uuid())
-  title        String
-  description  String?
-  dueDate      DateTime
-  status       String   @default("pending") // e.g. "pending", "in_progress", "completed"
-  assignedToId String?
-  assignedTo   User?    @relation("UserAssignedTasks", fields: [assignedToId], references: [id])
-  createdById  String
-  createdBy    User     @relation("UserCreatedTasks", fields: [createdById], references: [id])
-  subjectType  TaskSubjectType
-  subjectIds   Json    // Array of IDs (Lead, Stage, etc.)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@map("tasks")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
-
-enum TaskSubjectType {
-  LEAD
-  LEAD_GROUP
-  STAGE
-}
-
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  CONTENT_ADMIN
-  AGENT
+model Action {
+  id   String @id
+  name String @unique
+}
+
+model Customer {
+  id           String         @id
+  name         String
+  email        String         @unique
+  phone        String
+  address      String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  Invoice      Invoice[]
+  Subscription Subscription[]
+  Note         Note[]
+  EntityHistory EntityHistory[]
+}
+
+model Demo {
+  id          String   @id
+  title       String
+  description String?
+  coverImage  String?
+  videos      Json?
+  priority    Int?
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+model Form {
+  id           String         @id
+  name         String
+  description  String?
+  fields       Json
+  stageId      String?
+  published    Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  bannerImage  String?
+  Stage        Stage?         @relation(fields: [stageId], references: [id])
+  FormResponse FormResponse[]
+}
+
+model FormResponse {
+  id        String   @id
+  formId    String
+  leadId    String?
+  response  Json
+  createdAt DateTime @default(now())
+  Form      Form     @relation(fields: [formId], references: [id])
+  Lead      Lead?    @relation(fields: [leadId], references: [id])
+}
+
+model Invoice {
+  id             String        @id
+  invoiceNumber  String        @unique
+  amount         Float
+  status         String
+  dueDate        DateTime
+  customerId     String
+  subscriptionId String?
+  lineItems      Json          @default("[]")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime
+  Customer       Customer      @relation(fields: [customerId], references: [id])
+  Subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+}
+
+model Lead {
+  id                         String                  @id
+  schoolName                 String?
+  name                       String
+  phone                      String
+  email                      String
+  address                    String?
+  assignedTo                 String?
+  stageId                    String?
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime
+  demoCode                   String?                 @unique
+  demoLog                    Json?
+  howHeard                   String?
+  numberOfStudents           String?
+  ownedById                  String?
+  FormResponse               FormResponse[]
+  User_Lead_assignedToToUser User?                   @relation("Lead_assignedToToUser", fields: [assignedTo], references: [id])
+  User_Lead_ownedByIdToUser  User?                   @relation("Lead_ownedByIdToUser", fields: [ownedById], references: [id])
+  Stage                      Stage?                  @relation(fields: [stageId], references: [id])
+  LeadHistory                LeadHistory[]
+  Note                       Note[]
+  EntityHistory              EntityHistory[]
+  Request                    Request[]
+  webinar_registrations      webinar_registrations[]
+}
+
+model LeadHistory {
+  id          String   @id
+  type        String
+  fromStage   String?
+  toStage     String?
+  actionType  String?
+  note        String?
+  createdAt   DateTime @default(now())
+  leadId      String
+  userId      String?
+  disposition String?
+  Lead        Lead     @relation(fields: [leadId], references: [id])
+  User        User?    @relation(fields: [userId], references: [id])
+}
+
+model EntityHistory {
+  id          String   @id
+  type        String
+  fromStage   String?
+  toStage     String?
+  actionType  String?
+  note        String?
+  createdAt   DateTime @default(now())
+  leadId      String?
+  customerId  String?
+  userId      String?
+  disposition String?
+  entityType  String    // 'lead' or 'customer'
+  Lead        Lead?     @relation(fields: [leadId], references: [id])
+  Customer    Customer? @relation(fields: [customerId], references: [id])
+  User        User?     @relation(fields: [userId], references: [id])
+}
+
+model Message {
+  id              String           @id
+  subject         String?
+  body            String
+  status          MessageStatus    @default(DRAFT)
+  senderType      SenderType       @default(USER)
+  senderId        String?
+  recipient       String
+  templateId      String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime
+  User            User?            @relation(fields: [senderId], references: [id])
+  MessageTemplate MessageTemplate? @relation(fields: [templateId], references: [id])
+}
+
+model MessageTemplate {
+  id               String    @id
+  name             String
+  subject          String?
+  emailHtml        String?
+  emailImages      String[]
+  emailAttachments String[]
+  whatsappText     String?
+  whatsappImages   String[]
+  createdById      String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime
+  emailDesign      Json?
+  Message          Message[]
+  User             User      @relation(fields: [createdById], references: [id])
+  Stage            Stage[]
+}
+
+model Note {
+  id         String   @id
+  content    String
+  createdAt  DateTime @default(now())
+  leadId     String?
+  customerId String?
+  userId     String?
+  entityType String?   // Can be 'lead' or 'customer'
+  Lead       Lead?    @relation(fields: [leadId], references: [id])
+  Customer   Customer? @relation(fields: [customerId], references: [id])
+  User       User?    @relation(fields: [userId], references: [id])
+}
+
+model Request {
+  id          String      @id
+  type        RequestType
+  leadId      String
+  requestedAt DateTime    @default(now())
+  details     Json?
+  Lead        Lead        @relation(fields: [leadId], references: [id])
+}
+
+model Setting {
+  key   String @id
+  value Json?
+}
+
+model Stage {
+  id                String           @id
+  name              String           @unique
+  order             Int
+  color             String?
+  defaultTemplateId String?
+  Form              Form[]
+  Lead              Lead[]
+  MessageTemplate   MessageTemplate? @relation(fields: [defaultTemplateId], references: [id])
+}
+
+model Subscription {
+  id              String    @id
+  customerId      String
+  planName        String
+  startDate       DateTime
+  endDate         DateTime?
+  studentCount    Int
+  discountPercent Int?
+  terms           Int       @default(1)
+  addons          Json      @default("[]")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime
+  Invoice         Invoice[]
+  Customer        Customer  @relation(fields: [customerId], references: [id])
+}
+
+model User {
+  id                             String                  @id
+  email                          String                  @unique
+  password                       String
+  name                           String?
+  role                           Role
+  createdAt                      DateTime                @default(now())
+  updatedAt                      DateTime
+  referralCode                   String?                 @unique
+  Lead_Lead_assignedToToUser     Lead[]                  @relation("Lead_assignedToToUser")
+  Lead_Lead_ownedByIdToUser      Lead[]                  @relation("Lead_ownedByIdToUser")
+  LeadHistory                    LeadHistory[]
+  EntityHistory                  EntityHistory[]
+  Message                        Message[]
+  MessageTemplate                MessageTemplate[]
+  Note                           Note[]
+  assets                         assets[]
+  blogs                          blogs[]
+  tasks_tasks_assignedToIdToUser tasks[]                 @relation("tasks_assignedToIdToUser")
+  tasks_tasks_createdByIdToUser  tasks[]                 @relation("tasks_createdByIdToUser")
+  webinar_registrations          webinar_registrations[]
+  webinars                       webinars[]
+}
+
+model academic_years {
+  id        String   @id
+  name      String   @unique
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  terms     terms[]
+}
+
+model assets {
+  id          String   @id
+  title       String
+  description String
+  files       Json?
+  links       Json?
+  published   Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  User        User     @relation(fields: [createdById], references: [id])
+}
+
+model blogs {
+  id          String    @id
+  title       String
+  slug        String    @unique
+  content     String
+  excerpt     String?
+  coverImage  String?
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  authorId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  category    String?
+  featured    Boolean   @default(false)
+  keyphrase   String?
+  tags        String?
+  User        User      @relation(fields: [authorId], references: [id])
+}
+
+model tasks {
+  id                            String          @id
+  title                         String
+  description                   String?
+  dueDate                       DateTime
+  status                        String          @default("pending")
+  assignedToId                  String?
+  createdById                   String
+  subjectType                   TaskSubjectType
+  subjectIds                    Json
+  createdAt                     DateTime        @default(now())
+  updatedAt                     DateTime
+  User_tasks_assignedToIdToUser User?           @relation("tasks_assignedToIdToUser", fields: [assignedToId], references: [id])
+  User_tasks_createdByIdToUser  User            @relation("tasks_createdByIdToUser", fields: [createdById], references: [id])
+}
+
+model terms {
+  id             String         @id
+  name           String
+  academicYearId String
+  startDate      DateTime
+  endDate        DateTime
+  isCurrent      Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime
+  academic_years academic_years @relation(fields: [academicYearId], references: [id])
+
+  @@unique([academicYearId, name])
+}
+
+model webinar_registrations {
+  id            String   @id
+  webinarId     String
+  leadId        String
+  userId        String?
+  registeredAt  DateTime @default(now())
+  paymentStatus String?
+  attended      Boolean? @default(false)
+  Lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  User          User?    @relation(fields: [userId], references: [id])
+  webinars      webinars @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@unique([webinarId, leadId])
+}
+
+model webinars {
+  id                    String                  @id
+  title                 String
+  slug                  String                  @unique
+  subtitle              String?
+  description           String?
+  coverImage            String?
+  dateTime              DateTime
+  durationMinutes       Int?
+  platform              String?
+  facilitators          Json?
+  isFree                Boolean                 @default(true)
+  price                 Float?
+  attendeeLimit         Int?
+  registrationOpen      Boolean                 @default(true)
+  published             Boolean                 @default(false)
+  publishedAt           DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime
+  category              String?
+  tags                  String?
+  authorId              String?
+  learningObjectives    Json?
+  targetAudience        Json?
+  whyAttendReasons      Json?
+  whyAttendHighlight    String?
+  whyAttendParagraph    String?
+  webinar_registrations webinar_registrations[]
+  User                  User?                   @relation(fields: [authorId], references: [id])
 }
 
 enum MessageStatus {
@@ -151,189 +374,16 @@ enum MessageStatus {
   FAILED
 }
 
-
-model Stage {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  order     Int      // for sorting columns
-  leads     Lead[]   @relation("LeadStage")
-  forms     Form[]    @relation("StageForms")
-  color     String?  // optional for UI
-  defaultTemplateId String? // optional relation to MessageTemplate
-  defaultTemplate   MessageTemplate? @relation("DefaultTemplateForStage", fields: [defaultTemplateId], references: [id])
-}
-
-model Form {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  bannerImage String?  // Optional: Banner/header image URL
-  fields      Json     // JSON structure for dynamic fields
-  stageId     String?  // Optional: assign leads to stage on submission
-  stage       Stage?   @relation("StageForms", fields: [stageId], references: [id])
-  published   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  responses   FormResponse[]
-}
-
-model FormResponse {
-  id        String   @id @default(uuid())
-  formId    String
-  form      Form     @relation(fields: [formId], references: [id])
-  leadId    String?
-  lead      Lead?    @relation("LeadFormResponses", fields: [leadId], references: [id])
-  response  Json     // JSON structure for answers
-  createdAt DateTime @default(now())
-}
-
-
-model User {
-  ownedLeads Lead[] @relation("OwnedLeads") // Leads owned by this agent
-  referralCode String? @unique // Unique referral code for agent (6-digit)
-
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      Role
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  leads     Lead[]   @relation("AgentLeads")
-  notes     Note[]   @relation("UserNotes")
-  assets    Asset[]  @relation("UserAssets")
-  leadHistory LeadHistory[] @relation("UserLeadHistory")
-  messageTemplates MessageTemplate[] 
-  sentMessages Message[] @relation("SentMessages")
-  posts     Blog[]   @relation("UserBlogPosts")
-  webinars  Webinar[] @relation("UserWebinars") // Relation for webinars authored by the user
-  webinarRegistrations WebinarRegistration[]
-  createdTasks Task[] @relation("UserCreatedTasks")
-  assignedTasks Task[] @relation("UserAssignedTasks")
-}
-
-model Lead {
-  ownedById         String?   // New: Agent user who owns this lead
-  ownedBy           User?     @relation("OwnedLeads", fields: [ownedById], references: [id]) // Relation to User (agent)
-
-  id                 String    @id @default(uuid())
-  name               String    // From form
-  phone              String    // From form
-  email              String    @unique // From form
-  schoolName         String?   // From form, now optional
-  numberOfStudents   String?   // NEW: From form (optional in model if not always required elsewhere)
-  howHeard           String?   // NEW: From form (optional in model if not always required elsewhere)
-  
-  demoCode           String?   @unique // NEW: Generated for demo access
-  demoLog            Json?     // NEW: Logs related to demo code (e.g., { generatedAt: "timestamp", accessedAt: "timestamp" })
-
-  address            String?   // Existing: Kept as optional
-  assignedTo         String?   // Existing: User.id of agent, nullable for unassigned
-  agent              User?     @relation("AgentLeads", fields: [assignedTo], references: [id])
-  stageId            String?   // Existing: Kept as optional      
-  stage              Stage?    @relation("LeadStage", fields: [stageId], references: [id])
-  
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  notes              Note[]
-  history            LeadHistory[]
-  webinarRegistrations WebinarRegistration[]
-  requests           Request[]
-  formResponses      FormResponse[] @relation("LeadFormResponses")
-}
-
 enum RequestType {
   CALL
   DEMO
   VISIT
 }
 
-model Request {
-  id           String      @id @default(uuid())
-  type         RequestType
-  leadId       String
-  lead         Lead        @relation(fields: [leadId], references: [id])
-  requestedAt  DateTime    @default(now())
-  details      Json?
-}
-
-model Note {
-  id        String   @id @default(uuid())
-  content   String
-  createdAt DateTime @default(now())
-  leadId    String
-  lead      Lead     @relation(fields: [leadId], references: [id])
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], name: "UserNotes")
-}
-
-model LeadHistory {
-  id          String   @id @default(uuid())
-  type        String
-  fromStage   String?
-  toStage     String?
-  actionType  String?
-  note        String?
-  disposition String?
-  createdAt   DateTime @default(now())
-  leadId      String
-  lead        Lead     @relation(fields: [leadId], references: [id])
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], name: "UserLeadHistory")
-}
-
-
-model Action {
-  id   String @id @default(uuid())
-  name String @unique
-}
-
-model Setting {
-  key   String @id
-  value Json?
-}
-
-model Customer {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  phone     String
-  address   String?
-  invoices  Invoice[]
-  subscriptions Subscription[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Subscription {
-  id             String   @id @default(uuid())
-  customerId     String
-  customer       Customer @relation(fields: [customerId], references: [id])
-  planName       String
-  startDate      DateTime
-  endDate        DateTime?
-  studentCount   Int
-  discountPercent Int?
-  terms          Int      @default(1) // Number of terms for the main subscription
-  addons         Json     @default("[]") // Each addon should be an object with its own 'terms' property, e.g. [{ name: ..., price: ..., terms: ... }, ...]
-  invoices       Invoice[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
-
-model Invoice {
-  id             String   @id @default(uuid())
-  invoiceNumber  String   @unique // 6-digit invoice number for human reference
-  amount         Float
-  status         String
-  dueDate        DateTime
-  customerId     String
-  customer       Customer @relation(fields: [customerId], references: [id])
-  subscriptionId String?
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  lineItems      Json @default("[]")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+enum Role {
+  ADMIN
+  CONTENT_ADMIN
+  AGENT
 }
 
 enum SenderType {
@@ -341,79 +391,8 @@ enum SenderType {
   SYSTEM
 }
 
-model Message {
-  id         String        @id @default(uuid())
-  subject    String?
-  body       String
-  status     MessageStatus @default(DRAFT)
-  senderType SenderType    @default(USER)
-  senderId   String?       // nullable, only set if senderType is USER
-  sender     User?         @relation("SentMessages", fields: [senderId], references: [id])
-  recipient  String        // recipient can be email, phone, etc.
-  templateId String?       // nullable, only set if a template was used
-  template   MessageTemplate? @relation("MessageTemplateMessages", fields: [templateId], references: [id])
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-}
-
-model MessageTemplate {
-  id            String   @id @default(uuid())
-  name          String
-  subject       String? // For email
-  emailHtml     String? // HTML body for email
-  emailImages   String[] // URLs for embedded images (in-body)
-  emailAttachments String[] // URLs for attachments
-  whatsappText  String? // Text for WhatsApp
-  whatsappImages String[] // URLs for WhatsApp images
-  emailDesign   Json?   // Added field for email builder design JSON
-  createdById   String
-  createdBy     User     @relation(fields: [createdById], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  defaultForStages Stage[] @relation("DefaultTemplateForStage")
-  messages      Message[] @relation("MessageTemplateMessages")
-}
-
-model AcademicYear {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  startDate   DateTime
-  endDate     DateTime
-  isCurrent   Boolean  @default(false)
-  terms       Term[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("academic_years")
-}
-
-model Term {
-  id             String   @id @default(uuid())
-  name           String   // e.g., "1st Term", "2nd Term", "3rd Term"
-  academicYearId String
-  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
-  startDate      DateTime
-  endDate        DateTime
-  isCurrent      Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@unique([academicYearId, name])
-  @@map("terms")
-}
-
-model Demo {
-  id          String    @id @default(cuid())
-  title       String
-  description String?   @db.Text
-  coverImage  String?
-  videos      Json?     // This will store an array of video objects: { url: string, title: string, description: string? }
-  priority    Int?
-  published   Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // If you had a relation to a User model, you might add something like:
-  // userId      String?
-  // user        User?     @relation(fields: [userId], references: [id])
+enum TaskSubjectType {
+  LEAD
+  LEAD_GROUP
+  STAGE
 }

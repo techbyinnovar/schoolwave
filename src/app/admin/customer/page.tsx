@@ -1,5 +1,8 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 interface Customer {
   id: string;
@@ -11,11 +14,41 @@ interface Customer {
   updatedAt: string;
 }
 
-export default function CustomerPage() {
+function CustomerPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [form, setForm] = useState<Partial<Customer>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [highlightedCustomerId, setHighlightedCustomerId] = useState<string | null>(null);
+
+  // Handle URL parameters for customer highlighting
+  useEffect(() => {
+    const customerId = searchParams.get('customer');
+    if (customerId) {
+      setHighlightedCustomerId(customerId);
+      // Auto-scroll to the highlighted customer
+      setTimeout(() => {
+        const element = document.getElementById(`customer-${customerId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [searchParams]);
+
+  // Open modal when customer ID is in URL but modal is not shown
+  useEffect(() => {
+    const customerId = searchParams.get('customer');
+    if (customerId && !showModal) {
+      setSelectedCustomerId(customerId);
+      setShowModal(true);
+    }
+  }, [searchParams, showModal]);
 
   useEffect(() => {
     fetchCustomers();
@@ -55,8 +88,58 @@ export default function CustomerPage() {
     }
   }
 
+  // Function to open customer detail modal
+  const openCustomerDetail = useCallback((customerId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('customer', customerId);
+    router.push(`${pathname}?${params.toString()}`);
+    setSelectedCustomerId(customerId);
+    setShowModal(true);
+  }, [router, pathname, searchParams]);
+
+  // Function to close the modal
+  const handleCloseModal = useCallback(() => {
+    setShowModal(false);
+    // Remove the customer parameter from URL while preserving other params
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('customer');
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
+  }, [router, pathname, searchParams]);
+
+  // Modal component
+  const CustomerModal = () => {
+    if (!showModal || !selectedCustomerId) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-auto">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-auto">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Customer Details</h2>
+            <button 
+              onClick={handleCloseModal}
+              className="p-1 rounded-full hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div className="p-0 h-[75vh]">
+            <iframe 
+              src={`/admin/customer/${selectedCustomerId}?embed=1`}
+              className="w-full h-full border-0"
+              title="Customer Details"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div className="p-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Customers</h1>
       <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <input
@@ -105,21 +188,52 @@ export default function CustomerPage() {
               <th className="p-2 border">Phone</th>
               <th className="p-2 border">Address</th>
               <th className="p-2 border">Created</th>
+              <th className="p-2 border">Actions</th>
             </tr>
           </thead>
           <tbody>
             {customers.map((c) => (
-              <tr key={c.id}>
+              <tr 
+                key={c.id} 
+                id={`customer-${c.id}`}
+                className={highlightedCustomerId === c.id ? "bg-yellow-100" : ""}
+              >
                 <td className="p-2 border">{c.name}</td>
                 <td className="p-2 border">{c.email}</td>
                 <td className="p-2 border">{c.phone}</td>
-                <td className="p-2 border">{c.address}</td>
+                <td className="p-2 border">{c.address || "N/A"}</td>
                 <td className="p-2 border">{new Date(c.createdAt).toLocaleString()}</td>
+                <td className="p-2 border">
+                  <button
+                    onClick={() => openCustomerDetail(c.id)}
+                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 mr-2"
+                  >
+                    View
+                  </button>
+                  <Link 
+                    href={`/admin/customer/${c.id}/edit`}
+                    className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
+                  >
+                    Edit
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      
+      {/* Modal */}
+      <CustomerModal />
     </div>
+  );
+}
+
+// Wrap the page content in Suspense for useSearchParams
+export default function CustomerPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Loading...</div>}>
+      <CustomerPageContent />
+    </Suspense>
   );
 }

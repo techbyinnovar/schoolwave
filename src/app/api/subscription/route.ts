@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
+import { randomUUID } from 'crypto';
 
 // Utility: fetch settings by key
 async function fetchSetting(key: string) {
@@ -61,13 +62,15 @@ export async function POST(req: NextRequest) {
 
     const subscription = await prisma.subscription.create({
       data: {
-        customer: { connect: { id: customerId } },
+        id: randomUUID(),
+        Customer: { connect: { id: customerId } },
         planName,
         startDate,
         endDate: safeEndDate,
         studentCount,
         discountPercent: discountPercent ?? null,
         addons: addons ?? [],
+        updatedAt: new Date(), // Ensure updatedAt is set properly
       }
     });
     return NextResponse.json(subscription);
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
 // READ (list all subscriptions)
 export async function GET() {
   try {
-    const subscriptions = await prisma.subscription.findMany({ include: { customer: true, invoices: true } });
+    const subscriptions = await prisma.subscription.findMany({ include: { Customer: true, Invoice: true } });
     return NextResponse.json(subscriptions);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch subscriptions', details: (error as any)?.message }, { status: 500 });

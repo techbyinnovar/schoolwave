@@ -1,8 +1,10 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import NestedEmailBuilder from "@/components/NestedEmailBuilder";
 import { cloudinaryUpload } from "@/utils/cloudinaryUpload";
+import CloudinaryUploadWidget from "@/components/shared/CloudinaryUploadWidget";
+import { toast } from "sonner";
 
 interface MessageTemplateFormProps {
   template?: any;
@@ -62,6 +64,12 @@ export default function MessageTemplateForm({
   const [whatsappImages, setWhatsappImages] = useState<string[]>(
     template?.whatsappImages || []
   );
+  const [cloudinaryWhatsappMedia, setCloudinaryWhatsappMedia] = useState<string>("");
+  // Track delivery options
+  const [deliveryMediums, setDeliveryMediums] = useState<{
+    email: boolean;
+    whatsapp: boolean;
+  }>({ email: true, whatsapp: false });
   const [loading, setLoading] = useState(false);
   const [templateId, setTemplateId] = useState<string | undefined>(template?.id);
   const router = useRouter();
@@ -86,11 +94,12 @@ export default function MessageTemplateForm({
     const payload = {
       name,
       subject,
-      emailHtml: htmlToSave,
+      emailHtml: deliveryMediums.email ? htmlToSave : '',
       emailDesign: designToSave,
       emailImages,
-      whatsappText,
-      whatsappImages,
+      whatsappText: deliveryMediums.whatsapp ? whatsappText : '',
+      whatsappImages: deliveryMediums.whatsapp ? whatsappImages : [],
+      deliveryMediums,
     };
 
     try {
@@ -194,73 +203,190 @@ export default function MessageTemplateForm({
         )}
 
         {activeTab === "whatsapp" && (
-          <div className="mb-4">
-            <label className="block font-semibold mb-1">WhatsApp Message</label>
-            <div className="flex w-full">
-              <div className="w-56 mr-6 p-3 bg-gray-50 border rounded h-fit self-start">
-                <div className="font-semibold mb-2 text-gray-700 text-sm">
-                  Available Variables
+          <>
+            <div className="mb-4">
+              <label className="block font-semibold mb-1">WhatsApp Message</label>
+              <div className="flex w-full">
+                <div className="w-56 mr-6 p-3 bg-gray-50 border rounded h-fit self-start">
+                  <div className="font-semibold mb-2 text-gray-700 text-sm">
+                    Available Variables
+                  </div>
+                  <ul className="space-y-2 text-xs">
+                    {[
+                      { label: "Agent Name", value: "{{agent.name}}" },
+                      { label: "Agent Email", value: "{{agent.email}}" },
+                      { label: "Agent Phone", value: "{{agent.phone}}" },
+                      { label: "Lead School Name", value: "{{lead.schoolName}}" },
+                      { label: "Lead Contact Name", value: "{{lead.contactName}}" },
+                      { label: "Lead Email", value: "{{lead.email}}" },
+                      { label: "Lead Phone", value: "{{lead.phone}}" },
+                      { label: "Lead Address", value: "{{lead.address}}" },
+                    ].map((v) => (
+                      <li key={v.value}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 text-blue-700 border border-blue-100"
+                          onClick={() => {
+                            const textarea = document.getElementById(
+                              "whatsapp-textarea"
+                            ) as HTMLTextAreaElement;
+                            if (textarea) {
+                              const start = textarea.selectionStart;
+                              const end = textarea.selectionEnd;
+                              const before = whatsappText.slice(0, start);
+                              const after = whatsappText.slice(end);
+                              const newText = before + v.value + after;
+                              setWhatsappText(newText);
+                              setTimeout(() => {
+                                textarea.focus();
+                                textarea.selectionStart =
+                                  textarea.selectionEnd = start + v.value.length;
+                              }, 0);
+                            } else {
+                              setWhatsappText(whatsappText + v.value);
+                            }
+                          }}
+                        >
+                          {v.label}{" "}
+                          <span className="text-gray-400">{v.value}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="space-y-2 text-xs">
-                  {[
-                    { label: "Agent Name", value: "{{agent.name}}" },
-                    { label: "Agent Email", value: "{{agent.email}}" },
-                    { label: "Agent Phone", value: "{{agent.phone}}" },
-                    { label: "Lead School Name", value: "{{lead.schoolName}}" },
-                    { label: "Lead Contact Name", value: "{{lead.contactName}}" },
-                    { label: "Lead Email", value: "{{lead.email}}" },
-                    { label: "Lead Phone", value: "{{lead.phone}}" },
-                    { label: "Lead Address", value: "{{lead.address}}" },
-                  ].map((v) => (
-                    <li key={v.value}>
-                      <button
-                        type="button"
-                        className="w-full text-left px-2 py-1 rounded hover:bg-blue-100 text-blue-700 border border-blue-100"
-                        onClick={() => {
-                          const textarea = document.getElementById(
-                            "whatsapp-textarea"
-                          ) as HTMLTextAreaElement;
-                          if (textarea) {
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const before = whatsappText.slice(0, start);
-                            const after = whatsappText.slice(end);
-                            const newText = before + v.value + after;
-                            setWhatsappText(newText);
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.selectionStart =
-                                textarea.selectionEnd = start + v.value.length;
-                            }, 0);
-                          } else {
-                            setWhatsappText(whatsappText + v.value);
-                          }
-                        }}
-                      >
-                        {v.label}{" "}
-                        <span className="text-gray-400">{v.value}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex-1">
-                <textarea
-                  id="whatsapp-textarea"
-                  className="w-full border px-3 py-2 rounded min-h-[120px]"
-                  value={whatsappText}
-                  onChange={(e) => setWhatsappText(e.target.value)}
-                />
+                <div className="flex-1">
+                  <textarea
+                    id="whatsapp-textarea"
+                    className="w-full border px-3 py-2 rounded min-h-[120px]"
+                    value={whatsappText}
+                    onChange={(e) => setWhatsappText(e.target.value)}
+                    placeholder="Enter your WhatsApp message here. This text will be sent as a caption with any media."
+                  />
+                </div>
               </div>
             </div>
-          </div>
+            
+            {/* WhatsApp Media Upload Section */}
+            <div className="mb-6 border-t pt-4 mt-6">
+              <label className="block font-semibold mb-2">WhatsApp Media (Optional)</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Cloudinary Upload Widget */}
+                <div>
+                  <div className="mb-2">
+                    <CloudinaryUploadWidget
+                      onSuccess={useCallback((result: any) => {
+                        if (result?.secure_url) {
+                          setCloudinaryWhatsappMedia(result.secure_url);
+                          setWhatsappImages(prev => [...prev, result.secure_url]);
+                          toast.success('Media uploaded successfully');
+                        }
+                      }, [])}
+                      buttonText="Upload Media to WhatsApp"
+                      folder="whatsapp-media"
+                      resourceType="auto"
+                      buttonClassName="w-full bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Supported: Images, Videos, PDFs (max 5MB)
+                  </p>
+                </div>
+                
+                {/* Preview Area */}
+                <div>
+                  {whatsappImages.length > 0 ? (
+                    <div>
+                      <p className="font-medium text-sm mb-2">
+                        {whatsappImages.length} Media {whatsappImages.length === 1 ? 'File' : 'Files'}
+                      </p>
+                      <div className="space-y-2 max-h-40 overflow-y-auto border rounded p-2">
+                        {whatsappImages.map((url, index) => (
+                          <div key={index} className="flex items-center justify-between text-sm p-1 hover:bg-gray-50">
+                            <div className="truncate flex-1">
+                              {url.includes('image') ? '🖼️' : 
+                               url.includes('video') ? '🎬' : 
+                               url.includes('pdf') ? '📄' : '📎'} {url.split('/').pop()}
+                            </div>
+                            <button
+                              type="button"
+                              className="text-red-600 hover:text-red-800 px-2"
+                              onClick={() => {
+                                setWhatsappImages(prev => prev.filter((_, i) => i !== index));
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      {whatsappImages.length > 0 && (
+                        <button
+                          type="button"
+                          className="mt-2 text-sm text-red-600 hover:text-red-800"
+                          onClick={() => setWhatsappImages([])}
+                        >
+                          Clear All Media
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="border rounded p-4 text-center text-gray-500">
+                      No media files selected
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
+        {/* Delivery Options */}
+        <div className="mt-6 border-t pt-4">
+          <label className="block font-semibold mb-2">Delivery Options</label>
+          <div className="flex gap-4">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={deliveryMediums.email}
+                onChange={(e) => setDeliveryMediums(prev => ({ ...prev, email: e.target.checked }))}
+                className="mr-2 h-4 w-4"
+              />
+              <span>Send as Email</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={deliveryMediums.whatsapp}
+                onChange={(e) => setDeliveryMediums(prev => ({ ...prev, whatsapp: e.target.checked }))}
+                className="mr-2 h-4 w-4"
+              />
+              <span>Send as WhatsApp</span>
+            </label>
+          </div>
+          
+          {/* Validation warnings */}
+          {!deliveryMediums.email && !deliveryMediums.whatsapp && (
+            <p className="text-amber-600 text-sm mt-2">
+              Please select at least one delivery method
+            </p>
+          )}
+          {deliveryMediums.email && emailHtml === '' && (
+            <p className="text-amber-600 text-sm mt-1">
+              Warning: Email is selected but email content is empty
+            </p>
+          )}
+          {deliveryMediums.whatsapp && whatsappText === '' && (
+            <p className="text-amber-600 text-sm mt-1">
+              Warning: WhatsApp is selected but message content is empty
+            </p>
+          )}
+        </div>
+        
         <div className="mt-6 flex gap-4">
           <button
             type="submit"
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            disabled={loading}
+            disabled={loading || (!deliveryMediums.email && !deliveryMediums.whatsapp)}
           >
             {loading ? "Saving..." : "Save Template"}
           </button>
