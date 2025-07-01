@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const academicYear = await prisma.academicYear.findUnique({
+    const academicYear = await prisma.academic_years.findUnique({
       where: { id: params.id },
       include: { terms: true }
     });
@@ -36,13 +36,13 @@ export async function PUT(
 
     // If setting as current, unset current from other years
     if (isCurrent) {
-      await prisma.academicYear.updateMany({
+      await prisma.academic_years.updateMany({
         where: { isCurrent: true, id: { not: params.id } },
         data: { isCurrent: false }
       });
     }
 
-    const academicYear = await prisma.academicYear.update({
+    const academicYear = await prisma.academic_years.update({
       where: { id: params.id },
       data: {
         name,
@@ -67,7 +67,7 @@ export async function DELETE(
 ) {
   try {
     // Check if there are any terms associated
-    const terms = await prisma.term.findMany({
+    const terms = await prisma.terms.findMany({
       where: { academicYearId: params.id }
     });
 
@@ -78,7 +78,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.academicYear.delete({
+    await prisma.academic_years.delete({
       where: { id: params.id }
     });
 

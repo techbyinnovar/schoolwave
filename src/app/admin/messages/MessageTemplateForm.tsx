@@ -274,7 +274,7 @@ export default function MessageTemplateForm({
                 <div>
                   <div className="mb-2">
                     <CloudinaryUploadWidget
-                      onSuccess={useCallback((result: any) => {
+                      onUploadSuccess={useCallback((result: any) => {
                         if (result?.secure_url) {
                           setCloudinaryWhatsappMedia(result.secure_url);
                           setWhatsappImages(prev => [...prev, result.secure_url]);
@@ -284,7 +284,7 @@ export default function MessageTemplateForm({
                       buttonText="Upload Media to WhatsApp"
                       folder="whatsapp-media"
                       resourceType="auto"
-                      buttonClassName="w-full bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition"
+                      className="w-full bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition"
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">

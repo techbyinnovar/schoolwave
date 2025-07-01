@@ -24,12 +24,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const registrants = await prisma.webinarRegistration.findMany({
+    const registrants = await prisma.webinar_registrations.findMany({
       where: whereClause,
       skip,
       take: limit,
       include: {
-        lead: {
+        Lead: {
           select: {
             name: true,
             email: true,
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
             schoolName: true,
           },
         },
-        webinar: {
+        webinars: {
           select: {
             title: true,
             slug: true,
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const totalRegistrants = await prisma.webinarRegistration.count({ where: whereClause });
+    const totalRegistrants = await prisma.webinar_registrations.count({ where: whereClause });
 
     return NextResponse.json({
       registrants,

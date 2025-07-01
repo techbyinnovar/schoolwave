@@ -1,16 +1,18 @@
+import { v4 as uuidv4 } from 'uuid';
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
-import { getToken } from 'next-auth/jwt';
+import { auth } from '../../auth';
 import { sendTemplateToLead } from '../lead/sendTemplateToLead';
 import type { MessageTemplate } from 'types/messageTemplate';
 
 export async function POST(req: NextRequest) {
   try {
-    // Authenticate
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-    if (!token || !token.sub) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    // Authenticate using modern auth() approach
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = session.user.id;
 
     // Parse request
     const { leadIds, medium, subject, body, templateId } = await req.json();
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid medium' }, { status: 400 });
     }
     // Fetch leads
-    const leads = await prisma.lead.findMany({ where: { id: { in: leadIds } }, include: { agent: true } });
+    const leads = await prisma.lead.findMany({ where: { id: { in: leadIds } }, include: { assignedUser: true } });
     if (!leads.length) {
       return NextResponse.json({ error: 'No leads found' }, { status: 404 });
     }
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest) {
     // Send and log for each lead
     const results = [];
     for (const lead of leads) {
-      let usedTemplate = template as MessageTemplate | null;
+      let usedTemplate: MessageTemplate | null = template;
       // If no template, build a pseudo-template from subject/body
       if (!usedTemplate) {
         usedTemplate = {
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
           emailAttachments: [],
           whatsappText: medium === 'whatsapp' ? body ?? '' : '',
           whatsappImages: [],
-          createdById: token.sub,
+          createdById: userId,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -56,21 +58,23 @@ export async function POST(req: NextRequest) {
       // Use existing logic
       await sendTemplateToLead({
         lead,
-        agent: lead.agent,
+        agent: lead.assignedUser,
         template: usedTemplate,
-        userId: token.sub,
+        userId: userId,
         fromStage: null,
         toStage: null,
       });
       // Create a message record
       await prisma.message.create({
         data: {
+          id: uuidv4(),
           subject: (usedTemplate?.subject ?? subject) || '',
           body: medium === 'email' ? (usedTemplate?.emailHtml ?? '') : (usedTemplate?.whatsappText ?? ''),
           recipient: medium === 'email' ? lead.email : lead.phone,
           status: 'SENT',
           senderType: 'USER',
-          senderId: token.sub,
+          senderId: userId,
+          updatedAt: new Date(),
           ...(templateId ? { templateId } : {}),
         },
       });

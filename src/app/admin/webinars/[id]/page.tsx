@@ -8,7 +8,7 @@ type Props = {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const webinar = await prisma.webinar.findUnique({
+  const webinar = await prisma.webinars.findUnique({
     where: { id: params.id },
     select: { title: true },
   });
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AdminWebinarDetailsPage({ params }: Props) {
   const webinarId = params.id;
 
-  const webinar = await prisma.webinar.findUnique({
+  const webinar = await prisma.webinars.findUnique({
     where: { id: webinarId },
   });
 
@@ -30,11 +30,11 @@ export default async function AdminWebinarDetailsPage({ params }: Props) {
     notFound();
   }
 
-  const registrations = await prisma.webinarRegistration.findMany({
+  const registrations = await prisma.webinar_registrations.findMany({
     where: { webinarId: webinarId },
     include: {
-      lead: true, // Include lead details for each registration
-      user: { select: { name: true, email: true } }, // If linked to an internal user
+      Lead: true, // Include lead details for each registration
+      User: { select: { name: true, email: true } }, // If linked to an internal user
     },
     orderBy: {
       registeredAt: 'desc',

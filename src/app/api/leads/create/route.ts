@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
+import { v4 as uuidv4 } from 'uuid';
 
 // Input validation schema
 const leadSchema = z.object({
@@ -47,7 +46,7 @@ export async function POST(req: NextRequest) {
     validatedEmailForCatch = email; // Capture email for use in catch block
 
     // Check if email already exists
-    const existingLeadByEmail = await prisma.lead.findUnique({
+    const existingLeadByEmail = await prisma.lead.findFirst({
       where: { email },
     });
 
@@ -96,6 +95,8 @@ export async function POST(req: NextRequest) {
 
     const newLead = await prisma.lead.create({
       data: {
+        id: uuidv4(),
+        updatedAt: new Date(),
         name,
         phone,
         email,
@@ -104,8 +105,8 @@ export async function POST(req: NextRequest) {
         howHeard,
         demoCode,
         demoLog: { initialStatus: 'Demo code generated', generatedAt: new Date().toISOString() }, // Initial demo_log as JSON
-        ...(watchedDemoStageId ? { stageId: watchedDemoStageId } : {}),
-        ...(ownedById ? { ownedById } : {}),
+        stageId: watchedDemoStageId,
+        ownedById, // This could be undefined
       },
     });
 
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
     if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
         // This case should be caught by the explicit check above, but as a fallback:
         if (validatedEmailForCatch) {
-          const existingLead = await prisma.lead.findUnique({ where: { email: validatedEmailForCatch } });
+          const existingLead = await prisma.lead.findFirst({ where: { email: validatedEmailForCatch } });
           errorMessage = 'A lead with this email already exists.';
           return NextResponse.json({ message: errorMessage, demoCode: existingLead?.demoCode }, { status: 409 });
         } else {

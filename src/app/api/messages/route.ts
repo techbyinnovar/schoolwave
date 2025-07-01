@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 import { auth } from '../../../auth';
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
     // Create the template in the database
     const template = await prisma.messageTemplate.create({
       data: {
+        id: uuidv4(),
         name,
         subject,
         emailHtml,
@@ -47,6 +49,7 @@ export async function POST(req: NextRequest) {
         whatsappText,
         whatsappImages,
         createdById: userId, // Using userId from the session
+        updatedAt: new Date(),
       },
     });
 

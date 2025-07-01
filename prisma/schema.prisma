@@ -94,8 +94,8 @@ model Lead {
   numberOfStudents           String?
   ownedById                  String?
   FormResponse               FormResponse[]
-  User_Lead_assignedToToUser User?                   @relation("Lead_assignedToToUser", fields: [assignedTo], references: [id])
-  User_Lead_ownedByIdToUser  User?                   @relation("Lead_ownedByIdToUser", fields: [ownedById], references: [id])
+  assignedUser               User?                   @relation("Lead_assignedToToUser", fields: [assignedTo], references: [id])
+  ownedBy                    User?                   @relation("Lead_ownedByIdToUser", fields: [ownedById], references: [id])
   Stage                      Stage?                  @relation(fields: [stageId], references: [id])
   LeadHistory                LeadHistory[]
   Note                       Note[]
@@ -233,8 +233,8 @@ model User {
   createdAt                      DateTime                @default(now())
   updatedAt                      DateTime
   referralCode                   String?                 @unique
-  Lead_Lead_assignedToToUser     Lead[]                  @relation("Lead_assignedToToUser")
-  Lead_Lead_ownedByIdToUser      Lead[]                  @relation("Lead_ownedByIdToUser")
+  assignedLeads                  Lead[]                  @relation("Lead_assignedToToUser")
+  ownedLeads                     Lead[]                  @relation("Lead_ownedByIdToUser")
   LeadHistory                    LeadHistory[]
   EntityHistory                  EntityHistory[]
   Message                        Message[]

@@ -1,6 +1,20 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { Role, Webinar } from '@prisma/client'; // Assuming Webinar type is available
+import { Role } from '@prisma/client'; // Removed incorrect Webinar import
+
+// Define a custom type for webinar data
+interface WebinarType {
+  id: string;
+  title: string;
+  description?: string;
+  startDate?: Date;
+  endDate?: Date;
+  location?: string;
+  maxAttendees?: number;
+  createdAt: Date;
+  updatedAt: Date;
+  [key: string]: any; // Allow for additional properties from API
+}
 import EditWebinarForm from '@/components/admin/webinars/EditWebinarForm'; // We'll create this next
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -11,7 +25,7 @@ interface EditWebinarPageProps {
   };
 }
 
-async function getWebinar(id: string): Promise<Webinar | null> {
+async function getWebinar(id: string): Promise<WebinarType | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const res = await fetch(`${baseUrl}/api/webinars/${id}`, {
@@ -57,7 +71,7 @@ export default async function EditWebinarPage({ params }: EditWebinarPageProps) 
   }
 
   const { id } = params;
-  let webinar: Webinar | null = null;
+  let webinar: WebinarType | null = null;
   let fetchError: string | null = null;
 
   try {

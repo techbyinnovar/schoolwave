@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Try to find an existing lead by email or phone
-    let lead = await prisma.lead.findUnique({
+    let lead = await prisma.lead.findFirst({
       where: { email },
     });
     let isExistingLead = false;
@@ -41,6 +42,8 @@ export async function POST(req: NextRequest) {
       // No existing lead found by email or phone, create a new one
       lead = await prisma.lead.create({
         data: {
+          id: uuidv4(),
+          updatedAt: new Date(),
           schoolName,
           name,
           phone,
@@ -91,6 +94,7 @@ export async function POST(req: NextRequest) {
       if (changesDetected) {
         await prisma.note.create({
           data: {
+            id: uuidv4(),
             leadId: lead.id,
             content: changeLog.join('\n')
           }
@@ -99,7 +103,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if already registered
-    const existingRegistration = await prisma.webinarRegistration.findUnique({
+    const existingRegistration = await prisma.webinar_registrations.findUnique({
       where: {
         webinarId_leadId: {
           webinarId: webinarId,
@@ -113,15 +117,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Create the webinar registration
-    const webinarRegistration = await prisma.webinarRegistration.create({
+    const webinarRegistration = await prisma.webinar_registrations.create({
       data: {
+        id: uuidv4(),
+        registeredAt: new Date(),
         leadId: lead.id,
         webinarId: webinarId,
       },
     });
 
     // Get webinar details for the note
-    const webinar = await prisma.webinar.findUnique({
+    const webinar = await prisma.webinars.findUnique({
       where: { id: webinarId },
       select: { title: true }
     });
@@ -137,6 +143,7 @@ export async function POST(req: NextRequest) {
     
     await prisma.note.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         content: noteContent,
       },

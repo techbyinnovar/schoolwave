@@ -1,5 +1,6 @@
 // Moved from note.ts for Next.js app directory routing compliance
 import { NextRequest, NextResponse } from "next/server";
+import { v4 as uuidv4 } from 'uuid';
 import { db } from "@/lib/db";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -15,6 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     console.log("Creating note for lead", { leadId, noteContent });
     const note = await db.note.create({
       data: {
+        id: uuidv4(),
         leadId,
         content: noteContent,
       },

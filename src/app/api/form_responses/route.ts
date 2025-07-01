@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/prisma/client';
+import { db as prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 // POST /api/form_responses - submit a response to a form (public endpoint)
 export async function POST(req: NextRequest) {
@@ -14,31 +15,31 @@ export async function POST(req: NextRequest) {
       }
     }
     // Try to find a lead by email first
-    let lead = await prisma.lead.findUnique({ where: { email: data.email } });
-    let isExistingLead = false;
-    
+    let lead = await prisma.lead.findFirst({ where: { email: data.email } });
+
     // If not found by email, try to find by phone
     if (!lead && data.phone) {
-      const leadByPhone = await prisma.lead.findFirst({
-        where: { phone: data.phone },
-      });
-      if (leadByPhone) lead = leadByPhone;
+      lead = await prisma.lead.findFirst({ where: { phone: data.phone } });
     }
+
+    const isExistingLead = !!lead;
     
     if (!lead) {
       // Create a new lead if one doesn't exist
       lead = await prisma.lead.create({
         data: {
+          id: uuidv4(),
           name: data.name,
           email: data.email,
           phone: data.phone,
           schoolName: data.schoolName,
           stageId: data.stageId || null, // fallback if not provided
+          updatedAt: new Date(),
         },
       });
     } else {
       // Using existing lead
-      isExistingLead = true;
+
       
       // Store the old lead information before updating
       const oldLeadInfo = {
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
       if (changesDetected) {
         await prisma.note.create({
           data: {
+            id: uuidv4(),
             leadId: lead.id,
             content: changeLog.join('\n')
           }
@@ -90,6 +92,7 @@ export async function POST(req: NextRequest) {
     }
     const response = await prisma.formResponse.create({
       data: {
+        id: uuidv4(),
         formId: data.formId,
         leadId: lead.id,
         response: data.responseData,
@@ -118,6 +121,7 @@ export async function POST(req: NextRequest) {
     // Create the note
     await prisma.note.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         content: noteContent,
         // Note: The Note model doesn't have a type field, so we'll include the info in content

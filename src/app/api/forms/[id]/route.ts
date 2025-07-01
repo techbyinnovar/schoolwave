@@ -5,7 +5,7 @@ import { prisma } from '@/prisma/client';
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const form = await prisma.form.findUnique({
     where: { id: params.id },
-    include: { stage: true, responses: { include: { lead: true } } },
+    include: { Stage: true, FormResponse: { include: { Lead: true } } },
   });
   if (!form) return NextResponse.json({ error: 'Form not found' }, { status: 404 });
   return NextResponse.json(form);

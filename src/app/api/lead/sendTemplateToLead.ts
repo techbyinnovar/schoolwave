@@ -1,6 +1,7 @@
 import { sendSmtpMail } from "@/utils/smtpMailer";
 import { sendWhatsAppMessage } from '@/utils/whatsappApi';
 import { db as prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Send template-based email and WhatsApp message to a lead, including handling inline images and attachments from DB.
@@ -27,8 +28,9 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
   const normalizedUserId = userId && typeof userId === 'string' && userId.trim().length > 0 ? userId : null;
   // If stage movement is present, create a note for it
   if (fromStage && toStage && fromStage !== toStage) {
-    await prisma.note.create({
+        await prisma.note.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         userId: normalizedUserId,
         content: `moved from ${fromStage} stage to ${toStage} stage`,
@@ -78,6 +80,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
     }
     await prisma.leadHistory.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         type: 'action',
         actionType: 'Email',
@@ -105,6 +108,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
     }
     await prisma.leadHistory.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         type: 'action',
         actionType: 'WhatsApp',

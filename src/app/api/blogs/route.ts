@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { z } from 'zod';
 import { db as prisma } from '@/lib/db'; // Updated to use path alias
 import { auth } from '@/auth'; // Updated to use path alias (assuming auth.ts is at project root)
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to generate a slug
 function slugify(text: string): string {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     const slug = slugify(title);
 
     // Check if slug already exists to prevent duplicates
-    const existingSlug = await prisma.blog.findUnique({
+    const existingSlug = await prisma.blogs.findUnique({
       where: { slug },
     });
 
@@ -54,8 +55,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A blog post with this title (slug) already exists. Please choose a different title.' }, { status: 409 });
     }
 
-    const newBlogPost = await prisma.blog.create({
+    const newBlogPost = await prisma.blogs.create({
       data: {
+        id: uuidv4(),
         title,
         slug,
         content,
@@ -68,6 +70,7 @@ export async function POST(request: NextRequest) {
         category: category || undefined,
         keyphrase: keyphrase || undefined,
         tags: tags || undefined,
+        updatedAt: new Date(),
       },
     });
 
@@ -95,7 +98,7 @@ export async function GET(request: NextRequest) {
       whereClause.published = true;
     }
 
-    const blogPosts = await prisma.blog.findMany({
+    const blogPosts = await prisma.blogs.findMany({
       where: whereClause,
       skip,
       take: limit,
@@ -103,7 +106,7 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc', // Or publishedAt: 'desc' if preferred for published posts
       },
       include: {
-        author: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -113,7 +116,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const totalPosts = await prisma.blog.count({
+    const totalPosts = await prisma.blogs.count({
       where: whereClause,
     });
 

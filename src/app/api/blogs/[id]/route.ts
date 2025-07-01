@@ -33,10 +33,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
   try {
     if (!isUuid) { // Assumed slug-based query for public access
-      const blogPostBySlug = await prisma.blog.findUnique({
+      const blogPostBySlug = await prisma.blogs.findUnique({
         where: { slug: identifier, published: true }, // Must be published for public slug access
         include: {
-          author: { select: { id: true, name: true } }, // Avoid exposing author email on public fetches
+          User: { select: { id: true, name: true } }, // Avoid exposing author email on public fetches
         },
       });
 
@@ -45,10 +45,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       }
       return NextResponse.json(blogPostBySlug);
     } else { // UUID-based query (potentially for admin or direct ID access)
-      const blogPostById = await prisma.blog.findUnique({
+      const blogPostById = await prisma.blogs.findUnique({
         where: { id: identifier },
         include: {
-          author: { select: { id: true, name: true, email: true } }, // Admin/direct ID fetch can include email
+          User: { select: { id: true, name: true, email: true } }, // Admin/direct ID fetch can include email
         },
       });
 
@@ -85,7 +85,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (validation.data.title) {
       const newSlug = slugify(validation.data.title);
       // Check if the new slug conflicts with another post
-      const existingSlug = await prisma.blog.findFirst({
+      const existingSlug = await prisma.blogs.findFirst({
         where: {
           slug: newSlug,
           id: { not: id }, // Exclude the current post from the check
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Handle publishedAt timestamp
     if (validation.data.published === true) {
-      const currentPost = await prisma.blog.findUnique({ where: { id }, select: { published: true } });
+      const currentPost = await prisma.blogs.findUnique({ where: { id }, select: { published: true } });
       if (currentPost && !currentPost.published) {
         dataToUpdate.publishedAt = new Date();
       }
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       dataToUpdate.publishedAt = null;
     }
 
-    const updatedBlogPost = await prisma.blog.update({
+    const updatedBlogPost = await prisma.blogs.update({
       where: { id },
       data: dataToUpdate,
     });
@@ -131,7 +131,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   }
 
   try {
-    await prisma.blog.delete({
+    await prisma.blogs.delete({
       where: { id },
     });
 

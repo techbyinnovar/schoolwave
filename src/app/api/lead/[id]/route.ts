@@ -14,7 +14,7 @@ export async function GET(
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const lead = await prisma.lead.findUnique({
     where: { id },
-    include: { agent: true, stage: true, ownedBy: true, notes: { include: { user: true } }, history: { include: { user: true } } },
+    include: { assignedUser: true, Stage: true, ownedBy: true, Note: { include: { User: true } }, EntityHistory: { include: { User: true } } },
   });
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
   return NextResponse.json({ result: { data: lead } });
@@ -37,7 +37,7 @@ export async function PATCH(
   // Fetch current lead (with relations) to detect stage change later
   const existingLead = await prisma.lead.findUnique({
     where: { id },
-    include: { stage: true, agent: true }
+    include: { Stage: true, assignedUser: true }
   });
 
   // Role-based allowed fields
@@ -72,23 +72,23 @@ export async function PATCH(
     const lead = await prisma.lead.update({
       where: { id },
       data: filteredUpdate,
-      include: { stage: true, agent: true }
+      include: { Stage: true, assignedUser: true }
     });
 
     // ---- Auto send template if stage changed & new stage has default template ----
     if (existingLead?.stageId !== lead.stageId && lead.stageId) {
       const stage = await prisma.stage.findUnique({
         where: { id: lead.stageId },
-        include: { defaultTemplate: true }
+        include: { MessageTemplate: true }
       });
-      if (stage?.defaultTemplate) {
+      if (stage?.MessageTemplate) {
         // fire and forget; do not block response
         sendTemplateToLead({
           lead,
-          agent: lead.agent,
-          template: stage.defaultTemplate,
+          agent: lead.assignedUser,
+          template: stage.MessageTemplate,
           userId,
-          fromStage: existingLead?.stage?.name ?? null,
+          fromStage: existingLead?.Stage?.name ?? null,
           toStage: stage.name ?? null,
         }).catch(console.error);
       }

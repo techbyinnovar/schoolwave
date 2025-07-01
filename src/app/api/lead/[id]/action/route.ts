@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from "@/lib/db";
-
+import { v4 as uuidv4 } from 'uuid';
 
 // POST /api/lead/[id]/action - log an action for a lead
 export async function POST(
@@ -19,6 +19,7 @@ export async function POST(
   }
   const history = await prisma.leadHistory.create({
     data: {
+      id: uuidv4(),
       leadId: id,
       type,
       actionType,
@@ -26,7 +27,7 @@ export async function POST(
       disposition: disposition || null,  // Include disposition if provided
       userId,
     },
-    include: { user: true },
+    include: { User: true },
   });
   return NextResponse.json({ result: { data: history } });
 }

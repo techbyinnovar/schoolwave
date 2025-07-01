@@ -3,6 +3,7 @@ import { db as prisma } from '@/lib/db';
 import { auth } from '@/auth'; // Assuming your auth setup is in '@/auth'
 import { DemoCreateSchema } from '@/lib/schemas/demoSchemas';
 import { Role } from '@prisma/client'; // Make sure Role enum is in your prisma schema
+import { v4 as uuidv4 } from 'uuid';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,12 +37,9 @@ export async function POST(req: Request) {
 
     const newDemo = await prisma.demo.create({
       data: {
-        title: validatedData.title,
-        description: validatedData.description,
-        coverImage: validatedData.coverImage,
-        videos: validatedData.videos, // Prisma's Json type handles the array of objects
-        priority: validatedData.priority,
-        published: validatedData.published,
+        id: uuidv4(),
+        ...validatedData,
+        updatedAt: new Date(),
       },
     });
 

@@ -8,7 +8,7 @@ async function getRequests() {
   return db.request.findMany({
     orderBy: { requestedAt: 'desc' },
     include: {
-      lead: true,
+      Lead: true, // Fix: Capitalize 'Lead' to match the Prisma schema
     },
   });
 }
@@ -34,9 +34,9 @@ export default async function RequestsPage() {
           {requests.map((req) => (
             <tr key={req.id}>
               <td className="px-4 py-2 border font-semibold">{req.type}</td>
-              <td className="px-4 py-2 border">{req.lead?.name || '-'}</td>
-              <td className="px-4 py-2 border">{req.lead?.email || '-'}</td>
-              <td className="px-4 py-2 border">{req.lead?.phone || '-'}</td>
+              <td className="px-4 py-2 border">{req.Lead?.name || '-'}</td>
+              <td className="px-4 py-2 border">{req.Lead?.email || '-'}</td>
+              <td className="px-4 py-2 border">{req.Lead?.phone || '-'}</td>
               <td className="px-4 py-2 border text-xs">
                 <pre className="whitespace-pre-wrap break-all">{JSON.stringify(req.details, null, 2)}</pre>
               </td>

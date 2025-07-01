@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-let prisma: PrismaClient;
-try {
-  // Try to import from lib/db, fallback to direct instantiation
-  // This covers both edge and node runtimes
-  // @ts-ignore
-  prisma = (await import('@/lib/db')).db || new PrismaClient();
-} catch (e) {
-  prisma = new PrismaClient();
-  console.error('Falling back to new PrismaClient()', e);
-}
+import { db as prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 
 // POST: Book a call and log request/note
@@ -23,30 +13,30 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Find or create Lead by email or phone
-    let lead = await prisma.lead.findUnique({ where: { email } });
-    let isExistingLead = false;
-    
+    let lead = await prisma.lead.findFirst({ where: { email } });
+
     // If not found by email, try to find by phone
     if (!lead && phone) {
-      const leadByPhone = await prisma.lead.findFirst({
-        where: { phone },
-      });
-      if (leadByPhone) lead = leadByPhone;
+      lead = await prisma.lead.findFirst({ where: { phone } });
     }
+
+    const isExistingLead = !!lead;
     
     if (!lead) {
       // Create new lead if doesn't exist
       lead = await prisma.lead.create({
         data: {
+          id: uuidv4(),
           name: name || email,
           phone,
           email,
           schoolName: schoolName || 'N/A',
+          updatedAt: new Date(),
         },
       });
     } else {
       // Using existing lead
-      isExistingLead = true;
+      
       
       // Store the old lead information before updating
       const oldLeadInfo = {
@@ -85,6 +75,7 @@ export async function POST(req: NextRequest) {
       if (changesDetected) {
         await prisma.note.create({
           data: {
+            id: uuidv4(),
             leadId: lead.id,
             content: changeLog.join('\n')
           }
@@ -102,6 +93,7 @@ export async function POST(req: NextRequest) {
     
     await prisma.note.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         content: noteContent,
       },
@@ -110,6 +102,7 @@ export async function POST(req: NextRequest) {
     // 3. Create a Request entry (CALL)
     await prisma.request.create({
       data: {
+        id: uuidv4(),
         type: 'CALL',
         leadId: lead.id,
         details: {

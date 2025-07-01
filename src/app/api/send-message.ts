@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 import { auth } from '../../auth';
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid medium' }, { status: 400 });
     }
     // Fetch leads
-    const leads = await prisma.lead.findMany({ where: { id: { in: leadIds } }, include: { agent: true } });
+    const leads = await prisma.lead.findMany({ where: { id: { in: leadIds } }, include: { assignedUser: true } });
     if (!leads.length) {
       return NextResponse.json({ error: 'No leads found' }, { status: 404 });
     }
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
         // Use existing email sending logic for email medium
         await sendTemplateToLead({
           lead,
-          agent: lead.agent,
+          agent: lead.assignedUser,
           template: usedTemplate,
           userId: userId,
           fromStage: null,
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
       // Create a message record
       await prisma.message.create({
         data: {
+          id: uuidv4(),
           subject: usedTemplate.subject || subject || '',
           body: medium === 'email' ? usedTemplate.emailHtml || '' : usedTemplate.whatsappText || '',
           status: 'SENT',
@@ -105,6 +107,7 @@ export async function POST(req: NextRequest) {
           senderId: userId, // Updated to use userId from auth() session
           recipient: medium === 'email' ? lead.email : lead.phone,
           templateId: templateId || null,
+          updatedAt: new Date(),
         },
       });
       results.push({ leadId: lead.id, status: 'sent' });

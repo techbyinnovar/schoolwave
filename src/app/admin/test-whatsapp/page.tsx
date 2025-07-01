@@ -277,7 +277,7 @@ export default function TestWhatsAppPage() {
                     <Label>Upload via Cloudinary (Recommended)</Label>
                     <div className="mt-2">
                       <CloudinaryUploadWidget
-                        onSuccess={handleCloudinarySuccess}
+                        onUploadSuccess={handleCloudinarySuccess}
                         buttonText="Upload to Cloudinary"
                         folder="whatsapp-media"
                         resourceType="auto"

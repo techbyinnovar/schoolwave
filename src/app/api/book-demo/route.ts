@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
+import { v4 as uuidv4 } from 'uuid';
 
 // POST: Book a demo and log request/note
 export async function POST(req: NextRequest) {
@@ -11,27 +12,27 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Find or create Lead by email or phone
-    let lead = await prisma.lead.findUnique({ where: { email } });
-    let isExistingLead = false;
-    
+    let lead = await prisma.lead.findFirst({ where: { email } });
+
     // If not found by email, try to find by phone
     if (!lead && phone) {
-      const leadByPhone = await prisma.lead.findFirst({
-        where: { phone },
-      });
-      if (leadByPhone) lead = leadByPhone;
+      lead = await prisma.lead.findFirst({ where: { phone } });
     }
+
+    const isExistingLead = !!lead;
     
     if (!lead) {
       // Create new lead if doesn't exist
       lead = await prisma.lead.create({
         data: {
+          id: uuidv4(),
           name,
           phone,
           email,
           schoolName,
           address: address || undefined,
           numberOfStudents: numStudents ? String(numStudents) : undefined,
+          updatedAt: new Date(),
         },
       });
     } else {
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
       if (changesDetected) {
         await prisma.note.create({
           data: {
+            id: uuidv4(),
             leadId: lead.id,
             content: changeLog.join('\n')
           }
@@ -94,6 +96,7 @@ export async function POST(req: NextRequest) {
     
     await prisma.note.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         content: noteContent,
         // Note: The Note model doesn't have a type field
@@ -103,16 +106,17 @@ export async function POST(req: NextRequest) {
     // 3. Create a Request entry (DEMO)
     await prisma.request.create({
       data: {
+        id: uuidv4(),
         type: 'DEMO',
         leadId: lead.id,
         details: {
           demoDate,
           demoTime,
-          note: noteContent,
+          note,
           contactName,
           contactPhone,
-        },
-      },
+        }
+      }
     });
 
     return NextResponse.json({ success: true, leadId: lead.id });

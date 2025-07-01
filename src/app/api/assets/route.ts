@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 import { auth } from '@/auth';
 import { z } from 'zod';
+import crypto from 'crypto';
 
 const AssetSchema = z.object({
   title: z.string().min(1),
@@ -16,10 +17,10 @@ export async function GET(req: NextRequest) {
   const session = await auth();
   const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'CONTENT_ADMIN';
   const where = isAdmin ? {} : { published: true };
-  const assets = await prisma.asset.findMany({
+  const assets = await prisma.assets.findMany({
     where,
     orderBy: { createdAt: 'desc' },
-    include: { createdBy: { select: { id: true, name: true, email: true } } },
+    include: { User: { select: { id: true, name: true, email: true } } },
   });
   return NextResponse.json(assets);
 }
@@ -35,9 +36,11 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 });
   }
-  const asset = await prisma.asset.create({
+  const asset = await prisma.assets.create({
     data: {
       ...parsed.data,
+      id: crypto.randomUUID(),
+      updatedAt: new Date(),
       createdById: session.user.id,
     },
   });

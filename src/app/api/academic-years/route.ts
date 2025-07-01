@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
+import crypto from 'crypto';
 
 export async function GET() {
   try {
-    const academicYears = await prisma.academicYear.findMany({
+    const academicYears = await prisma.academic_years.findMany({
       include: {
         terms: true
       },
@@ -26,18 +27,20 @@ export async function POST(req: Request) {
 
     // If setting as current, unset current from other years
     if (isCurrent) {
-      await prisma.academicYear.updateMany({
+      await prisma.academic_years.updateMany({
         where: { isCurrent: true },
         data: { isCurrent: false }
       });
     }
 
-    const academicYear = await prisma.academicYear.create({
+    const academicYear = await prisma.academic_years.create({
       data: {
+        id: crypto.randomUUID(),
         name,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        isCurrent
+        isCurrent,
+        updatedAt: new Date()
       }
     });
 

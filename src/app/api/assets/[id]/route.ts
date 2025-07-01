@@ -16,9 +16,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const session = await auth();
   const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'CONTENT_ADMIN';
   const where = isAdmin ? { id: params.id } : { id: params.id, published: true };
-  const asset = await prisma.asset.findFirst({
+  const asset = await prisma.assets.findFirst({
     where,
-    include: { createdBy: { select: { id: true, name: true, email: true } } },
+    include: { User: { select: { id: true, name: true, email: true } } },
   });
   if (!asset) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json(asset);
@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 });
   }
-  const asset = await prisma.asset.update({
+  const asset = await prisma.assets.update({
     where: { id: params.id },
     data: parsed.data,
   });
@@ -48,6 +48,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'CONTENT_ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  await prisma.asset.delete({ where: { id: params.id } });
+  await prisma.assets.delete({ where: { id: params.id } });
   return NextResponse.json({ success: true });
 }
