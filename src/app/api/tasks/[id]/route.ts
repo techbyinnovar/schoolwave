@@ -12,18 +12,31 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const userId = session.user.id;
   const role = session.user.role;
   const { id } = params;
-  const task = await prisma.task.findUnique({
+  const task = await prisma.tasks.findUnique({
     where: { id },
     include: {
-      assignedTo: { select: { id: true, name: true, email: true } },
-      createdBy: { select: { id: true, name: true, email: true } },
+      User_tasks_assignedToIdToUser: { select: { id: true, name: true, email: true } },
+      User_tasks_createdByIdToUser: { select: { id: true, name: true, email: true } },
     },
   });
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   if (role !== 'ADMIN' && task.createdById !== userId && task.assignedToId !== userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  return NextResponse.json({ task });
+
+  const {
+    User_tasks_assignedToIdToUser,
+    User_tasks_createdByIdToUser,
+    ...rest
+  } = task;
+
+  const responseTask = {
+    ...rest,
+    assignedTo: User_tasks_assignedToIdToUser,
+    createdBy: User_tasks_createdByIdToUser,
+  };
+
+  return NextResponse.json({ task: responseTask });
 }
 
 // PUT: Update a task (must be creator or assigned, or admin)
@@ -36,7 +49,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const role = session.user.role;
   const { id } = params;
   const data = await req.json();
-  const task = await prisma.task.findUnique({ where: { id } });
+  const task = await prisma.tasks.findUnique({ where: { id } });
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   if (role !== 'ADMIN' && task.createdById !== userId && task.assignedToId !== userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -45,7 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (data.assignedToId && data.assignedToId !== userId && role !== 'ADMIN') {
     return NextResponse.json({ error: 'Only admin can assign tasks to others' }, { status: 403 });
   }
-  const updated = await prisma.task.update({
+  const updated = await prisma.tasks.update({
     where: { id },
     data: {
       title: data.title,
@@ -67,11 +80,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const userId = session.user.id;
   const role = session.user.role;
   const { id } = params;
-  const task = await prisma.task.findUnique({ where: { id } });
+  const task = await prisma.tasks.findUnique({ where: { id } });
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   if (role !== 'ADMIN' && task.createdById !== userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  await prisma.task.delete({ where: { id } });
+  await prisma.tasks.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }

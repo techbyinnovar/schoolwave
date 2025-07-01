@@ -6,17 +6,23 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const term = await prisma.term.findUnique({
+    const termWithRelation = await prisma.terms.findUnique({
       where: { id: params.id },
-      include: { academicYear: true }
+      include: { academic_years: true }
     });
 
-    if (!term) {
+    if (!termWithRelation) {
       return NextResponse.json(
         { error: 'Term not found' },
         { status: 404 }
       );
     }
+
+    const { academic_years, ...rest } = termWithRelation;
+    const term = {
+      ...rest,
+      academicYear: academic_years,
+    };
 
     return NextResponse.json(term);
   } catch (error) {
@@ -36,13 +42,13 @@ export async function PUT(
 
     // If setting as current, unset current from other terms
     if (isCurrent) {
-      await prisma.term.updateMany({
+      await prisma.terms.updateMany({
         where: { isCurrent: true, id: { not: params.id } },
         data: { isCurrent: false }
       });
     }
 
-    const term = await prisma.term.update({
+    const term = await prisma.terms.update({
       where: { id: params.id },
       data: {
         name,
@@ -67,7 +73,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.term.delete({
+    await prisma.terms.delete({
       where: { id: params.id }
     });
 

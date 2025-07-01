@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
   // Determine next order value
   const maxOrder = await prisma.stage.aggregate({ _max: { order: true } });
   const order = (maxOrder._max.order ?? 0) + 1;
-  const stage = await prisma.stage.create({ data: { name, color, order } });
+  const stage = await prisma.stage.create({ data: { id: uuidv4(), name, color, order } });
   return NextResponse.json({ stage });
 }
 

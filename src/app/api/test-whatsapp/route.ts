@@ -31,20 +31,32 @@ export async function POST(req: NextRequest) {
     const result = await sendWhatsAppMessage(to, message, mediaUrl);
     
     if (result.success) {
-      console.log('[TestWhatsApp API] Message sent successfully', { 
-        instanceId: result.data?.data?.instanceId || 'unknown' 
-      });
-      
-      return NextResponse.json({ 
-        success: true, 
-        timestamp: new Date().toISOString(),
-        data: result.data,
-        messageInfo: {
-          to: to ? `${to.substring(0, 4)}...` : undefined, // Log partial phone number for privacy
-          messageLength: message.length,
-          hasMedia: Boolean(mediaUrl)
-        }
-      });
+      // Type guard to ensure 'data' exists on the result object before access
+      if ('data' in result && result.data) {
+        console.log('[TestWhatsApp API] Message sent successfully', {
+          instanceId: result.data?.data?.instanceId || 'unknown'
+        });
+
+        return NextResponse.json({
+          success: true,
+          timestamp: new Date().toISOString(),
+          data: result.data,
+          messageInfo: {
+            to: to ? `${to.substring(0, 4)}...` : undefined,
+            messageLength: message.length,
+            hasMedia: Boolean(mediaUrl)
+          }
+        });
+      } else {
+        // This handles the case where success is true but no data is returned.
+        const errorMessage = 'error' in result && typeof result.error === 'string' ? result.error : 'Operation successful but no data returned.';
+        console.warn(`[TestWhatsApp API] ${errorMessage}`);
+        return NextResponse.json({
+          success: true,
+          message: errorMessage,
+          timestamp: new Date().toISOString(),
+        });
+      }
     } else {
       console.warn('[TestWhatsApp API] Failed to send message:', result.error);
       
@@ -52,7 +64,6 @@ export async function POST(req: NextRequest) {
         success: false, 
         error: result.error,
         timestamp: new Date().toISOString(),
-        data: result.data,
         messageInfo: {
           to: to ? `${to.substring(0, 4)}...` : undefined, // Log partial phone number for privacy
           messageLength: message.length

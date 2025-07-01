@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { sendSmtpMail } from '@/utils/smtpMailer';
 import { sendWhatsAppMessage } from '@/utils/whatsappApi';
 import { db as prisma } from '@/lib/db';
@@ -20,6 +21,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
     const normalizedUserId = userId && typeof userId === 'string' && userId.trim().length > 0 ? userId : null;
     await prisma.note.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         userId: normalizedUserId,
         content: `moved from ${fromStage} stage to ${toStage} stage`,
@@ -63,6 +65,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
     }
     await prisma.leadHistory.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         type: 'action',
         actionType: 'Email',
@@ -90,6 +93,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
     }
     await prisma.leadHistory.create({
       data: {
+        id: uuidv4(),
         leadId: lead.id,
         type: 'action',
         actionType: 'WhatsApp',

@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import { PlusCircle, Trash2, UploadCloud, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Webinar } from '@prisma/client'; // Assuming full Webinar type
+import { webinars as Webinar } from '@prisma/client'; // Assuming full Webinar type
 import { UpdateWebinarSchema, UpdateWebinarFormData } from '@/lib/validators/webinarValidators';
 import get from 'lodash/get';
 import dynamic from 'next/dynamic';

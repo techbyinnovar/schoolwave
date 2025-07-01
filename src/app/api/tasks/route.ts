@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../prisma/client';
 import { auth } from '../../../auth';
@@ -55,14 +56,28 @@ export async function GET(req: NextRequest) {
     delete where.OR;
   }
 
-  const tasks = await prisma.task.findMany({
+  const tasksWithRelations = await prisma.tasks.findMany({
     where,
     orderBy: { dueDate: 'asc' },
     include: {
-      assignedTo: { select: { id: true, name: true, email: true } },
-      createdBy: { select: { id: true, name: true, email: true } },
+      User_tasks_assignedToIdToUser: { select: { id: true, name: true, email: true } },
+      User_tasks_createdByIdToUser: { select: { id: true, name: true, email: true } },
     },
   });
+
+  const tasks = tasksWithRelations.map(task => {
+    const {
+      User_tasks_assignedToIdToUser,
+      User_tasks_createdByIdToUser,
+      ...rest
+    } = task;
+    return {
+      ...rest,
+      assignedTo: User_tasks_assignedToIdToUser,
+      createdBy: User_tasks_createdByIdToUser,
+    };
+  });
+
   return NextResponse.json({ tasks });
 }
 
@@ -85,8 +100,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Subject type is required' }, { status: 400 });
   }
 
-  const task = await prisma.task.create({
+  const task = await prisma.tasks.create({
     data: {
+      id: uuidv4(),
       title: data.title,
       description: data.description,
       dueDate: new Date(data.dueDate),
@@ -95,6 +111,7 @@ export async function POST(req: NextRequest) {
       subjectIds: data.subjectIds ?? [],
       assignedToId: data.assignedToId || null,
       createdById: userId,
+      updatedAt: new Date(),
     },
   });
   return NextResponse.json({ task });

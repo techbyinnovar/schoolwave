@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { Webinar } from '@prisma/client';
+import type { webinars } from '@prisma/client';
 // Local fallback for Prisma.JsonValue type
 // See: https://github.com/prisma/prisma/issues/9207
 // This is sufficient for client-side type checking
@@ -36,7 +36,7 @@ interface TargetAudienceItem {
   description: string;
 }
 
-export type ClientWebinarData = Webinar & {
+export type ClientWebinarData = webinars & {
   author?: { name?: string | null; } | null;
   // Assumed JSON fields on the Webinar model (add to Prisma schema if not present)
   learningObjectives?: JsonValue | null; // Should store string[]

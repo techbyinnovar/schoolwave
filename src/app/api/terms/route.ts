@@ -1,17 +1,27 @@
+import { v4 as uuidv4 } from 'uuid';
 import { NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 
 export async function GET() {
   try {
-    const terms = await prisma.term.findMany({
+    const termsWithRelations = await prisma.terms.findMany({
       include: {
-        academicYear: true
+        academic_years: true
       },
       orderBy: [
-        { academicYear: { startDate: 'desc' } },
+        { academic_years: { startDate: 'desc' } },
         { startDate: 'asc' }
       ]
     });
+
+    const terms = termsWithRelations.map(term => {
+      const { academic_years, ...rest } = term;
+      return {
+        ...rest,
+        academicYear: academic_years,
+      };
+    });
+
     return NextResponse.json(terms);
   } catch (error) {
     return NextResponse.json(
@@ -27,19 +37,21 @@ export async function POST(req: Request) {
 
     // If setting as current, unset current from other terms
     if (isCurrent) {
-      await prisma.term.updateMany({
+      await prisma.terms.updateMany({
         where: { isCurrent: true },
         data: { isCurrent: false }
       });
     }
 
-    const term = await prisma.term.create({
+    const term = await prisma.terms.create({
       data: {
+        id: uuidv4(),
         name,
         academicYearId,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        isCurrent
+        isCurrent,
+        updatedAt: new Date(),
       }
     });
 

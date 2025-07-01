@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 async function getAllPublishedWebinars() {
   try {
-    const webinars = await db.webinar.findMany({
+    const webinars = await db.webinars.findMany({
       where: {
         published: true,
       },

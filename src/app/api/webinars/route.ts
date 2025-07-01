@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '../../../auth';
-import { prisma } from '../../../../prisma/client';
-// import { Role, Webinar } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 // Define allowed roles as a plain string array
 const allowedRoles = ['ADMIN', 'CONTENT_ADMIN'];
 
@@ -61,7 +60,7 @@ export async function POST(req: NextRequest) {
     const slug = slugify(title, { lower: true, strict: true });
 
     // Check for slug uniqueness (optional, but good practice)
-    const existingWebinar = await prisma.webinar.findUnique({
+    const existingWebinar = await prisma.webinars.findUnique({
       where: { slug },
     });
     if (existingWebinar) {
@@ -80,7 +79,7 @@ export async function POST(req: NextRequest) {
       facilitators: restData.facilitators || [], // Ensure facilitators is an array
     };
 
-    const newWebinar = await prisma.webinar.create({
+    const newWebinar = await prisma.webinars.create({
       data: webinarData as any, // Prisma will validate the types
     });
 
@@ -122,7 +121,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const webinars = await prisma.webinar.findMany({
+    const webinarsWithDetails = await prisma.webinars.findMany({
       where: whereClause,
       skip,
       take: limit,
@@ -130,16 +129,22 @@ export async function GET(req: NextRequest) {
         createdAt: 'desc',
       },
       include: {
-        author: {
+        User: { // Corrected relation name
           select: { name: true },
         },
         _count: { 
-          select: { registrations: true },
+          select: { webinar_registrations: true },
         },
       },
     });
 
-    const totalWebinars = await prisma.webinar.count({ where: whereClause });
+    const totalWebinars = await prisma.webinars.count({ where: whereClause });
+
+    // Remap to keep API consistent for the frontend
+    const webinars = webinarsWithDetails.map(w => {
+      const { User, ...rest } = w;
+      return { ...rest, author: User };
+    });
 
     return NextResponse.json({
       webinars,
@@ -149,6 +154,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('Failed to fetch webinars:', error);
-    return NextResponse.json({ error: 'Failed to fetch webinars' }, { status: 500 });
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }

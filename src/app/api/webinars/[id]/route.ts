@@ -1,12 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 import { z } from 'zod';
 import { auth } from '@/auth';
 import type { Session } from 'next-auth';
 import { authConfig } from '@/utils/authOptions';
 import { Role } from '@prisma/client';
 
-const prisma = new PrismaClient();
+
 
 // Zod schema for webinar update (similar to create, but all fields optional for partial updates)
 // ID is not in the schema as it comes from the URL
@@ -70,10 +70,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const { id } = params;
 
   try {
-    const webinar = await prisma.webinar.findUnique({
+    const webinarWithAuthor = await prisma.webinars.findUnique({
       where: { id },
       include: {
-        author: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -83,9 +83,16 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       },
     });
 
-    if (!webinar) {
+    if (!webinarWithAuthor) {
       return NextResponse.json({ error: 'Webinar not found' }, { status: 404 });
     }
+
+    const { User, ...rest } = webinarWithAuthor;
+    const webinar = {
+      ...rest,
+      author: User,
+    };
+
     return NextResponse.json(webinar);
   } catch (error) {
     console.error(`Error fetching webinar ${id}:`, error);
@@ -118,7 +125,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       let newSlug = slugify(updatePayload.slug);
       let counter = 1;
       const originalSlug = newSlug;
-      while (await prisma.webinar.findFirst({ where: { slug: newSlug, NOT: { id } } })) {
+      while (await prisma.webinars.findFirst({ where: { slug: newSlug, NOT: { id } } })) {
         newSlug = `${originalSlug}-${counter}`;
         counter++;
       }
@@ -128,7 +135,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       let newSlug = slugify(updatePayload.title);
       let counter = 1;
       const originalSlug = newSlug;
-      while (await prisma.webinar.findFirst({ where: { slug: newSlug, NOT: { id } } })) {
+      while (await prisma.webinars.findFirst({ where: { slug: newSlug, NOT: { id } } })) {
         newSlug = `${originalSlug}-${counter}`;
         counter++;
       }
@@ -151,7 +158,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     }
 
 
-    const updatedWebinar = await prisma.webinar.update({
+    const updatedWebinar = await prisma.webinars.update({
       where: { id },
       data: updatePayload,
     });
@@ -185,7 +192,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    await prisma.webinar.delete({
+    await prisma.webinars.delete({
       where: { id },
     });
     // Successfully deleted, return 204 No Content or a success message

@@ -1,4 +1,4 @@
-import { prisma } from '../../../../prisma/client'; // Ensure this path is correct
+import { db as prisma } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import { Metadata, ResolvingMetadata } from 'next';
 import WebinarClientContent, { ClientWebinarData } from './webinar-client-content'; // Import the new client component
@@ -14,7 +14,7 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const slug = params.slug;
-  const webinar = await prisma.webinar.findUnique({
+  const webinar = await prisma.webinars.findUnique({
     where: { slug, published: true }, // Fetch only published webinars for metadata
     select: { title: true, description: true, coverImage: true },
   });
@@ -46,7 +46,7 @@ export async function generateMetadata(
 }
 
 export async function generateStaticParams() {
-  const webinars = await prisma.webinar.findMany({
+  const webinars = await prisma.webinars.findMany({
     where: { published: true }, // Only generate for published webinars
     select: { slug: true },
   });
@@ -55,14 +55,19 @@ export async function generateStaticParams() {
 
 export default async function WebinarPage({ params }: Props) {
   const slug = params.slug;
-  const webinar = await prisma.webinar.findUnique({
+  const webinarWithAuthor = await prisma.webinars.findUnique({
     where: { slug },
     include: {
-      author: { select: { name: true } }, // Ensure all data needed by ClientWebinarData is fetched
-      // Add other relations if your ClientWebinarData type requires them
-      // e.g., category: { select: { name: true } },
+      User: { select: { name: true } }, // Corrected relation name
     },
   });
+
+  if (!webinarWithAuthor) {
+    notFound();
+  }
+
+  const { User, ...rest } = webinarWithAuthor;
+  const webinar = { ...rest, author: User };
 
   if (!webinar || !webinar.published) { // Also check if webinar is published before displaying
     notFound();
