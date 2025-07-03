@@ -41,8 +41,20 @@ export async function POST(req: NextRequest) {
       endDate,
       studentCount,
       discountPercent,
-      addons // this should be an array or object
+      addons, // this could be directly provided as an array of objects
+      addonIds, // or these could be provided separately
+      addonTerms // and need to be combined
     } = data;
+    
+    // Transform addonIds and addonTerms into the expected addons array format if needed
+    let processedAddons = addons;
+    if (addonIds && Array.isArray(addonIds) && addonTerms && typeof addonTerms === 'object') {
+      processedAddons = addonIds.map(addonId => ({
+        addonId,
+        terms: addonTerms[addonId] || 1
+      }));
+      console.log('Transformed addons:', processedAddons);
+    }
 
     // Validate required fields and log missing ones
     const requiredFields = [
@@ -69,10 +81,12 @@ export async function POST(req: NextRequest) {
         endDate: safeEndDate,
         studentCount,
         discountPercent: discountPercent ?? null,
-        addons: addons ?? [],
+        addons: processedAddons ?? [], // Use the processed addons array
         updatedAt: new Date(), // Ensure updatedAt is set properly
       }
     });
+    
+    console.log('Created subscription with addons:', subscription.addons);
     return NextResponse.json(subscription);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create subscription', details: (error as any)?.message }, { status: 400 });
