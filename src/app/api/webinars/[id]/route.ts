@@ -73,6 +73,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const webinarWithAuthor = await prisma.webinars.findUnique({
       where: { id },
       include: {
+        webinar_registrations: {
+          include: {
+            Lead: true,
+          },
+        },
         User: {
           select: {
             id: true,
@@ -87,10 +92,38 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Webinar not found' }, { status: 404 });
     }
 
-    const { User, ...rest } = webinarWithAuthor;
+    const { User, webinar_registrations, ...rest } = webinarWithAuthor;
+
+    // Debug log to see what's in the registrations
+    console.log('Number of registrations found:', webinar_registrations.length);
+    if (webinar_registrations.length > 0) {
+      console.log('First registration data:', JSON.stringify(webinar_registrations[0], null, 2));
+      console.log('Lead data exists?', !!webinar_registrations[0].Lead);
+      if (webinar_registrations[0].Lead) {
+        console.log('Lead data fields:', Object.keys(webinar_registrations[0].Lead));
+      }
+    } else {
+      console.log('No registrations found');
+    }
+    
+    const mappedRegistrations = webinar_registrations
+      // Filter out registrations without a lead
+      .filter(reg => {
+        const hasLead = !!(reg as any).Lead;
+        if (!hasLead) console.log('Registration without lead:', reg.id);
+        return hasLead;
+      })
+      .map(reg => {
+        // Map uppercase 'Lead' from Prisma to lowercase 'lead' for frontend consistency
+        const regAny = reg as any;
+        const { Lead, ...restReg } = regAny;
+        return { ...restReg, lead: Lead };
+      });
+
     const webinar = {
       ...rest,
       author: User,
+      webinar_registrations: mappedRegistrations,
     };
 
     return NextResponse.json(webinar);

@@ -7,99 +7,80 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
     const { schoolName, name, phone, email, address, webinarId } = data;
 
+    // --- Start of Validation ---
     if (!webinarId) {
       return NextResponse.json({ error: 'Webinar ID is required' }, { status: 400 });
     }
+    // Email is the primary unique identifier for a lead and is required.
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required to register.' }, { status: 400 });
+    }
+    // --- End of Validation ---
 
-    // Fetch webinar stage id from settings (optional, could be handled differently)
     const setting = await prisma.setting.findUnique({ where: { key: 'webinar_stage_id' } });
     const stageId = setting?.value;
 
     if (!stageId || typeof stageId !== 'string') {
-      return NextResponse.json({ error: 'Webinar stage ID is required and not found in settings.' }, { status: 400 });
+      return NextResponse.json({ error: 'Webinar stage ID is not configured in settings.' }, { status: 500 });
     }
 
-    // Try to find an existing lead by email or phone
+    // --- Find or Create Lead ---
+    // Using findFirst instead of findUnique since email is not marked as unique in the schema
     let lead = await prisma.lead.findFirst({
-      where: { email },
+      where: { 
+        email: { 
+          equals: email 
+        } 
+      },
     });
-    let isExistingLead = false;
-    
-    // If not found by email, try to find by phone
-    if (!lead && phone) {
-      const leadByPhone = await prisma.lead.findFirst({
-        where: { phone },
-      });
-      if (leadByPhone) {
-        lead = leadByPhone;
-        isExistingLead = true;
-      }
-    } else if (lead) {
-      isExistingLead = true;
-    }
 
-    if (!lead) {
-      // No existing lead found by email or phone, create a new one
+    const isExistingLead = !!lead;
+
+    if (isExistingLead) {
+      // If the lead exists, update it with any new, non-null information
+      const updateData: { [key: string]: any } = {};
+      if (schoolName && schoolName !== lead!.schoolName) updateData.schoolName = schoolName;
+      if (name && name !== lead!.name) updateData.name = name;
+      if (phone && phone !== lead!.phone) updateData.phone = phone;
+      if (address && address !== lead!.address) updateData.address = address;
+
+      if (Object.keys(updateData).length > 0) {
+        // Log changes before updating
+        const changeLog = ['Lead information updated during webinar registration:'];
+        for (const [key, newValue] of Object.entries(updateData)) {
+            changeLog.push(`- ${key}: "${(lead as any)[key] || '(not set)'}" → "${newValue || '(not set)'}"`);
+        }
+        await prisma.note.create({
+            data: { id: uuidv4(), leadId: lead!.id, content: changeLog.join('\n') }
+        });
+
+        lead = await prisma.lead.update({
+          where: { id: lead!.id },
+          data: updateData,
+        });
+      }
+    } else {
+      // If the lead does not exist, create a new one
       lead = await prisma.lead.create({
         data: {
           id: uuidv4(),
-          updatedAt: new Date(),
           schoolName,
           name,
           phone,
           email,
           address,
-          stageId, // always a valid string here
+          stageId,
+          updatedAt: new Date(), // Required field in the Lead model
         },
       });
-    } else {
-      // Store the old lead information before updating
-      const oldLeadInfo = {
-        schoolName: lead.schoolName,
-        name: lead.name,
-        phone: lead.phone,
-        address: lead.address,
-        stageId: lead.stageId
-      };
-      
-      // Prepare the new lead data
-      const updateData = {
-        schoolName: schoolName ?? lead.schoolName,
-        name: name ?? lead.name,
-        phone: phone ?? lead.phone,
-        address: address ?? lead.address,
-        // Update stageId only if a new valid one is provided and different
-        ...(stageId && typeof stageId === 'string' && lead.stageId !== stageId && { stageId }),
-      };
-      
-      // Update the lead
-      lead = await prisma.lead.update({
-        where: { id: lead.id },
-        data: updateData
-      });
-      
-      // Log changes if any field was actually updated
-      let changesDetected = false;
-      const changeLog = ['Lead information updated during webinar registration:'];
-      
-      for (const [key, newValue] of Object.entries(updateData)) {
-        // Check if this field in updateData is different from the old value
-        if (newValue !== oldLeadInfo[key as keyof typeof oldLeadInfo]) {
-          changesDetected = true;
-          changeLog.push(`- ${key}: "${oldLeadInfo[key as keyof typeof oldLeadInfo] || '(not set)'}" → "${newValue || '(not set)'}"`);
-        }
-      }
-      
-      // If changes were made, create a note about them
-      if (changesDetected) {
-        await prisma.note.create({
-          data: {
-            id: uuidv4(),
-            leadId: lead.id,
-            content: changeLog.join('\n')
-          }
-        });
-      }
+    }
+
+    // --- Final Guardrail ---
+    // This check is critical. If 'lead' is null here, something has gone wrong,
+    // and we must not proceed to create an orphan registration.
+    if (!lead) {
+      console.error('Fatal: Lead could not be found or created. Registration aborted.');
+      return NextResponse.json({ error: 'Could not process lead information' }, { status: 500 });
     }
 
     // Check if already registered

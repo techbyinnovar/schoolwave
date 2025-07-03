@@ -78,7 +78,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
       emailStatus = 'error';
       emailNote = `Email failed: ${err instanceof Error ? err.message : String(err)}`;
     }
-    await prisma.leadHistory.create({
+    await prisma.entityHistory.create({
       data: {
         id: uuidv4(),
         leadId: lead.id,
@@ -86,6 +86,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
         actionType: 'Email',
         note: emailNote,
         userId: normalizedUserId,
+        entityType: 'lead', // Required field in the EntityHistory model
       },
     });
   }
@@ -106,7 +107,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
       waStatus = 'error';
       waNote = `WhatsApp failed: ${result.error || 'Unknown error'}`;
     }
-    await prisma.leadHistory.create({
+    await prisma.entityHistory.create({
       data: {
         id: uuidv4(),
         leadId: lead.id,
@@ -114,6 +115,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
         actionType: 'WhatsApp',
         note: waNote,
         userId: normalizedUserId,
+        entityType: 'lead', // Required field in the EntityHistory model
       },
     });
   }

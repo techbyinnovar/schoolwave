@@ -26,6 +26,7 @@ interface Webinar {
   _count?: { // For registration count
     registrations?: number;
   };
+  registrationCount?: number;
   // Add other fields you expect to list
 }
 
@@ -254,7 +255,7 @@ export default function WebinarListClient({
                       {webinar.published ? 'Published' : 'Draft'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{webinar._count?.registrations ?? 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">{webinar.registrationCount ?? webinar._count?.registrations ?? 0}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{webinar.author?.name || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2 flex items-center">
                     <Link href={`/webinar/${webinar.slug}`} passHref legacyBehavior>

@@ -142,8 +142,12 @@ export async function GET(req: NextRequest) {
 
     // Remap to keep API consistent for the frontend
     const webinars = webinarsWithDetails.map(w => {
-      const { User, ...rest } = w;
-      return { ...rest, author: User };
+      const { User, _count, ...rest } = w;
+      return { 
+        ...rest, 
+        author: User,
+        registrationCount: _count?.webinar_registrations || 0
+      };
     });
 
     return NextResponse.json({

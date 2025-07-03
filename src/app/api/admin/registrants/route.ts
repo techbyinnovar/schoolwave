@@ -24,6 +24,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Log the query parameters for debugging
+    console.log('Fetching registrants with params:', { page, limit, skip, webinarId, whereClause });
+    
     const registrants = await prisma.webinar_registrations.findMany({
       where: whereClause,
       skip,
@@ -48,6 +51,14 @@ export async function GET(req: NextRequest) {
         registeredAt: 'desc',
       },
     });
+    
+    // Log the first result to inspect the data structure
+    if (registrants.length > 0) {
+      console.log('First registrant data:', JSON.stringify(registrants[0], null, 2));
+      console.log('Lead data exists?', !!registrants[0].Lead);
+    } else {
+      console.log('No registrants found for the given criteria');
+    }
 
     const totalRegistrants = await prisma.webinar_registrations.count({ where: whereClause });
 

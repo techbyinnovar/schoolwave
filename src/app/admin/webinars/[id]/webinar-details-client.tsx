@@ -88,6 +88,15 @@ interface WebinarDetailsClientProps {
 }
 
 const WebinarDetailsClient: React.FC<WebinarDetailsClientProps> = ({ webinar, registrations }) => {
+  // Debug logging to inspect the registrations data
+  console.log('Frontend received registrations count:', registrations.length);
+  if (registrations.length > 0) {
+    console.log('First registration data:', registrations[0]);
+    console.log('Lead data exists?', !!registrations[0].lead);
+    if (registrations[0].lead) {
+      console.log('Lead data fields:', Object.keys(registrations[0].lead));
+    }
+  }
   const getStatusBadgeClass = (status: boolean, open?: boolean) => {
     if (open === true) return 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800'; // Open
     if (open === false) return 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800'; // Closed
@@ -145,10 +154,10 @@ const WebinarDetailsClient: React.FC<WebinarDetailsClientProps> = ({ webinar, re
               <tbody className="bg-white divide-y divide-gray-200">
                 {registrations.map((reg) => (
                   <tr key={reg.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{reg.lead.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead.phone || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead.schoolName || 'N/A'} {/* Assuming schoolName is organization */}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{reg.lead?.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead?.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead?.phone || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead?.schoolName || 'N/A'} {/* Assuming schoolName is organization */}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{format(new Date(reg.registeredAt), 'PP p')}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={getPaymentStatusBadgeClass(reg.paymentStatus, webinar.isFree)}>
@@ -161,9 +170,13 @@ const WebinarDetailsClient: React.FC<WebinarDetailsClientProps> = ({ webinar, re
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Link href={`/admin/leads/${reg.lead.id}`} className="text-indigo-600 hover:text-indigo-800 px-3 py-1 border border-indigo-600 rounded-md text-xs hover:bg-indigo-50 transition-colors">
-                        View Lead
-                      </Link>
+                      {reg.lead ? (
+                        <Link href={`/admin/leads/${reg.lead.id}`} className="text-indigo-600 hover:text-indigo-800 px-3 py-1 border border-indigo-600 rounded-md text-xs hover:bg-indigo-50 transition-colors">
+                          View Lead
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400 text-xs">Lead Missing</span>
+                      )}
                       {/* <button className="ml-2 text-green-600 hover:text-green-800 px-3 py-1 border border-green-600 rounded-md text-xs hover:bg-green-50 transition-colors">Mark Attended</button> */}
                     </td>
                   </tr>

@@ -35,6 +35,12 @@ interface FetchedWebinarsResponse {
 
 // Function to fetch registrants
 async function getRegistrants(page: number = 1, webinarId?: string): Promise<FetchedRegistrantsResponse | null> {
+  // Log environment configuration for debugging
+  console.log('[AdminRegistrantsPage] Environment:', {
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NODE_ENV: process.env.NODE_ENV,
+  });
+  
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const params = new URLSearchParams({ page: page.toString(), limit: '15' });
   if (webinarId) {
@@ -46,6 +52,11 @@ async function getRegistrants(page: number = 1, webinarId?: string): Promise<Fet
 
   try {
     const requestHeaders = headers(); // Get incoming request headers
+    console.log('[AdminRegistrantsPage] Request headers:', {
+      cookie: requestHeaders.has('cookie') ? 'Present' : 'Missing',
+      authorization: requestHeaders.has('authorization') ? 'Present' : 'Missing',
+    });
+    
     const res = await fetch(apiUrl, {
       cache: 'no-store',
       headers: {
@@ -64,12 +75,19 @@ async function getRegistrants(page: number = 1, webinarId?: string): Promise<Fet
     const resClone = res.clone();
     try {
       const data = await res.json();
-      console.log('[AdminRegistrantsPage] Successfully fetched and parsed registrants:', data);
+      console.log('[AdminRegistrantsPage] Successfully fetched registrants count:', data.registrants?.length || 0);
+      if (data.registrants?.length > 0) {
+        console.log('[AdminRegistrantsPage] First registrant sample:', {
+          id: data.registrants[0].id,
+          hasLead: !!data.registrants[0].lead,
+          leadFields: data.registrants[0].lead ? Object.keys(data.registrants[0].lead) : 'N/A',
+        });
+      }
       return data;
     } catch (jsonError) {
       console.error('[AdminRegistrantsPage] Failed to parse JSON response:', jsonError);
       const rawText = await resClone.text(); // Read from the clone
-      console.error('[AdminRegistrantsPage] Raw response text:', rawText);
+      console.error('[AdminRegistrantsPage] Raw response text:', rawText.substring(0, 500) + '...');
       return null;
     }
   } catch (error) {
