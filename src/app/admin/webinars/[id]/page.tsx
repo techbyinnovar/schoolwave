@@ -30,18 +30,40 @@ export default async function AdminWebinarDetailsPage({ params }: Props) {
     notFound();
   }
 
+  // Add debug logging to see what's in the database
+  console.log('Fetching registrations for webinar:', webinarId);
+  
   const registrations = await prisma.webinar_registrations.findMany({
     where: { webinarId: webinarId },
     include: {
-      Lead: true, // Include lead details for each registration
+      Lead: true, // Use uppercase 'Lead' to match the Prisma schema
       User: { select: { name: true, email: true } }, // If linked to an internal user
     },
     orderBy: {
       registeredAt: 'desc',
     },
   });
+  
+  // Debug log the first registration to see its structure
+  if (registrations.length > 0) {
+    console.log('First registration structure:', JSON.stringify(registrations[0], null, 2));
+    console.log('Lead data exists?', !!registrations[0].Lead);
+    if (registrations[0].Lead) {
+      console.log('Lead data fields:', Object.keys(registrations[0].Lead));
+    }
+  } else {
+    console.log('No registrations found for this webinar');
+  }
 
-  // We'll need to define the types for Webinar and Registrations with Lead details for the client component
-  // For now, we cast to any to get started, and will create WebinarDetailsClient next.
-  return <WebinarDetailsClient webinar={webinar as any} registrations={registrations as any} />;
+  // Map the registrations data to match the expected format in the client component
+  const mappedRegistrations = registrations.map(reg => {
+    // Explicitly map Lead to lead for the client component
+    const { Lead, ...rest } = reg;
+    return {
+      ...rest,
+      lead: Lead // Map uppercase Lead to lowercase lead for the client
+    };
+  });
+
+  return <WebinarDetailsClient webinar={webinar as any} registrations={mappedRegistrations as any} />;
 }

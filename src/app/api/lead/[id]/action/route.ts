@@ -17,7 +17,7 @@ export async function POST(
   if (!type || !actionType) {
     return NextResponse.json({ error: 'Missing type or actionType' }, { status: 400 });
   }
-  const history = await prisma.leadHistory.create({
+  const history = await prisma.entityHistory.create({
     data: {
       id: uuidv4(),
       leadId: id,
@@ -26,6 +26,7 @@ export async function POST(
       note: note || null,
       disposition: disposition || null,  // Include disposition if provided
       userId,
+      entityType: 'lead', // Set the entityType to 'lead' since this is for a lead
     },
     include: { User: true },
   });

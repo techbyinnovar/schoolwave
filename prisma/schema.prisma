@@ -137,20 +137,20 @@ model Message {
 }
 
 model MessageTemplate {
-  id               String    @id
-  name             String
-  subject          String?
-  emailHtml        String?
-  emailImages      String[]
-  emailAttachments String[]
-  whatsappText     String?
-  whatsappImages   String[]
-  createdById      String
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime
-  emailDesign      Json?
-  Message          Message[]
-  User             User      @relation(fields: [createdById], references: [id])
+  id                     String     @id
+  name                   String
+  subject                String?
+  emailHtml              String?
+  emailImages            String[]
+  emailAttachments       String[]
+  whatsappText           String?
+  whatsappImages         String[]
+  createdById            String
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime
+  emailDesign            Json?
+  Message                Message[]
+  User                   User       @relation(fields: [createdById], references: [id])
   Stage                  Stage[]
   WebinarDefaultTemplate webinars[] @relation("WebinarDefaultTemplate")
 }
@@ -321,37 +321,36 @@ model webinar_registrations {
 }
 
 model webinars {
-  id                    String                  @id
-  title                 String
-  slug                  String                  @unique
-  subtitle              String?
-  description           String?
-  coverImage            String?
-  dateTime              DateTime
-  durationMinutes       Int?
-  platform              String?
-  facilitators          Json?
-  isFree                Boolean                 @default(true)
-  price                 Float?
-  attendeeLimit         Int?
-  registrationOpen      Boolean                 @default(true)
-  published             Boolean                 @default(false)
-  publishedAt           DateTime?
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime
-  category              String?
-  tags                  String?
-  authorId              String?
-  learningObjectives    Json?
-  targetAudience        Json?
-  whyAttendReasons      Json?
-  whyAttendHighlight    String?
-  whyAttendParagraph    String?
-  webinar_registrations webinar_registrations[]
-
-  defaultMessageTemplateId String?          @map("default_message_template_id")
-  defaultMessageTemplate   MessageTemplate? @relation("WebinarDefaultTemplate", fields: [defaultMessageTemplateId], references: [id], onDelete: SetNull)
-  User                  User?                   @relation(fields: [authorId], references: [id])
+  id                       String                  @id
+  title                    String
+  slug                     String                  @unique
+  subtitle                 String?
+  description              String?
+  coverImage               String?
+  dateTime                 DateTime
+  durationMinutes          Int?
+  platform                 String?
+  facilitators             Json?
+  isFree                   Boolean                 @default(true)
+  price                    Float?
+  attendeeLimit            Int?
+  registrationOpen         Boolean                 @default(true)
+  published                Boolean                 @default(false)
+  publishedAt              DateTime?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime
+  category                 String?
+  tags                     String?
+  authorId                 String?
+  learningObjectives       Json?
+  targetAudience           Json?
+  whyAttendReasons         Json?
+  whyAttendHighlight       String?
+  whyAttendParagraph       String?
+  defaultMessageTemplateId String?                 @map("default_message_template_id")
+  webinar_registrations    webinar_registrations[]
+  User                     User?                   @relation(fields: [authorId], references: [id])
+  defaultMessageTemplate   MessageTemplate?        @relation("WebinarDefaultTemplate", fields: [defaultMessageTemplateId], references: [id])
 }
 
 enum MessageStatus {
