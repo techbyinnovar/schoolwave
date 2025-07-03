@@ -61,6 +61,9 @@ function SubscriptionRow({ sub, loading, setLoading, setError }: any) {
       .catch(() => setInvoice(null))
       .finally(() => setChecking(false));
   }, [sub.id]);
+
+  const canEdit = !invoice || (invoice.status !== 'PENDING' && invoice.status !== 'PAID');
+
   return (
     <tr>
       <td className="p-2 border">{sub.Customer?.name}</td>
@@ -100,6 +103,9 @@ function SubscriptionRow({ sub, loading, setLoading, setError }: any) {
             Generate Invoice
           </button>
         )}
+        {canEdit && (
+          <a href={`/admin/subscription/${sub.id}/edit`} className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 ml-2">Edit</a>
+        )}
       </td>
     </tr>
   );
@@ -111,7 +117,7 @@ export default function SubscriptionPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [addons, setAddons] = useState<Addon[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
-const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [form, setForm] = useState<any>({ terms: 1, addonTerms: {} });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

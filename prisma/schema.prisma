@@ -13,17 +13,17 @@ model Action {
 }
 
 model Customer {
-  id           String         @id
-  name         String
-  email        String         @unique
-  phone        String
-  address      String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
-  Invoice      Invoice[]
-  Subscription Subscription[]
-  Note         Note[]
+  id            String          @id
+  name          String
+  email         String          @unique
+  phone         String
+  address       String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
   EntityHistory EntityHistory[]
+  Invoice       Invoice[]
+  Note          Note[]
+  Subscription  Subscription[]
 }
 
 model Demo {
@@ -78,62 +78,46 @@ model Invoice {
 }
 
 model Lead {
-  id                         String                  @id
-  schoolName                 String?
-  name                       String
-  phone                      String
-  email                      String
-  address                    String?
-  assignedTo                 String?
-  stageId                    String?
-  createdAt                  DateTime                @default(now())
-  updatedAt                  DateTime
-  demoCode                   String?                 @unique
-  demoLog                    Json?
-  howHeard                   String?
-  numberOfStudents           String?
-  ownedById                  String?
-  FormResponse               FormResponse[]
-  assignedUser               User?                   @relation("Lead_assignedToToUser", fields: [assignedTo], references: [id])
-  ownedBy                    User?                   @relation("Lead_ownedByIdToUser", fields: [ownedById], references: [id])
-  Stage                      Stage?                  @relation(fields: [stageId], references: [id])
-  LeadHistory                LeadHistory[]
-  Note                       Note[]
-  EntityHistory              EntityHistory[]
-  Request                    Request[]
-  webinar_registrations      webinar_registrations[]
-}
-
-model LeadHistory {
-  id          String   @id
-  type        String
-  fromStage   String?
-  toStage     String?
-  actionType  String?
-  note        String?
-  createdAt   DateTime @default(now())
-  leadId      String
-  userId      String?
-  disposition String?
-  Lead        Lead     @relation(fields: [leadId], references: [id])
-  User        User?    @relation(fields: [userId], references: [id])
+  id                    String                  @id
+  schoolName            String?
+  name                  String
+  phone                 String
+  email                 String
+  address               String?
+  assignedTo            String?
+  stageId               String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime
+  demoCode              String?                 @unique
+  demoLog               Json?
+  howHeard              String?
+  numberOfStudents      String?
+  ownedById             String?
+  EntityHistory         EntityHistory[]
+  FormResponse          FormResponse[]
+  assignedUser          User?                   @relation("Lead_assignedToToUser", fields: [assignedTo], references: [id])
+  ownedBy               User?                   @relation("Lead_ownedByIdToUser", fields: [ownedById], references: [id])
+  Stage                 Stage?                  @relation(fields: [stageId], references: [id])
+  Note                  Note[]
+  Request               Request[]
+  webinar_registrations webinar_registrations[]
 }
 
 model EntityHistory {
-  id          String   @id
+  id          String    @id
   type        String
   fromStage   String?
   toStage     String?
   actionType  String?
   note        String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   leadId      String?
-  customerId  String?
   userId      String?
   disposition String?
-  entityType  String    // 'lead' or 'customer'
-  Lead        Lead?     @relation(fields: [leadId], references: [id])
-  Customer    Customer? @relation(fields: [customerId], references: [id])
+  entityType  String    @default("lead")
+  customerId  String?
+  Customer    Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  Lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: Restrict)
   User        User?     @relation(fields: [userId], references: [id])
 }
 
@@ -167,20 +151,21 @@ model MessageTemplate {
   emailDesign      Json?
   Message          Message[]
   User             User      @relation(fields: [createdById], references: [id])
-  Stage            Stage[]
+  Stage                  Stage[]
+  WebinarDefaultTemplate webinars[] @relation("WebinarDefaultTemplate")
 }
 
 model Note {
-  id         String   @id
+  id         String    @id
   content    String
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
   leadId     String?
-  customerId String?
   userId     String?
-  entityType String?   // Can be 'lead' or 'customer'
-  Lead       Lead?    @relation(fields: [leadId], references: [id])
-  Customer   Customer? @relation(fields: [customerId], references: [id])
-  User       User?    @relation(fields: [userId], references: [id])
+  entityType String    @default("lead")
+  customerId String?
+  Customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  Lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  User       User?     @relation(fields: [userId], references: [id])
 }
 
 model Request {
@@ -233,10 +218,9 @@ model User {
   createdAt                      DateTime                @default(now())
   updatedAt                      DateTime
   referralCode                   String?                 @unique
+  EntityHistory                  EntityHistory[]
   assignedLeads                  Lead[]                  @relation("Lead_assignedToToUser")
   ownedLeads                     Lead[]                  @relation("Lead_ownedByIdToUser")
-  LeadHistory                    LeadHistory[]
-  EntityHistory                  EntityHistory[]
   Message                        Message[]
   MessageTemplate                MessageTemplate[]
   Note                           Note[]
@@ -364,6 +348,9 @@ model webinars {
   whyAttendHighlight    String?
   whyAttendParagraph    String?
   webinar_registrations webinar_registrations[]
+
+  defaultMessageTemplateId String?          @map("default_message_template_id")
+  defaultMessageTemplate   MessageTemplate? @relation("WebinarDefaultTemplate", fields: [defaultMessageTemplateId], references: [id], onDelete: SetNull)
   User                  User?                   @relation(fields: [authorId], references: [id])
 }
 
@@ -395,4 +382,5 @@ enum TaskSubjectType {
   LEAD
   LEAD_GROUP
   STAGE
+  CUSTOMER
 }

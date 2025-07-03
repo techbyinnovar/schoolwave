@@ -1,6 +1,6 @@
 import { auth } from '../../../../auth';
 import { redirect } from 'next/navigation';
-import { Role } from '@prisma/client';
+import { Role, webinar_registrations, webinars as Webinar } from '@prisma/client';
 import RegistrantListClient from '@/components/admin/registrants/RegistrantListClient';
 import { headers } from 'next/headers';
 
@@ -20,10 +20,7 @@ interface Registrant {
   };
 }
 
-interface Webinar {
-  id: string;
-  title: string;
-}
+
 
 interface FetchedRegistrantsResponse {
   registrants: Registrant[];
