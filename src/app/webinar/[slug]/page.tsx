@@ -5,6 +5,9 @@ import WebinarClientContent, { ClientWebinarData } from './webinar-client-conten
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
+// Force dynamic rendering to prevent static rendering errors
+export const dynamic = 'force-dynamic';
+
 type Props = {
   params: { slug: string };
 };

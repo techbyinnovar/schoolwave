@@ -3,6 +3,7 @@ import { db as prisma } from "@/lib/db";
 import { auth } from '@/auth';
 
 export const runtime = "nodejs";
+export const dynamic = 'force-dynamic'; // Prevent static rendering of this route
 
 // GET /api/stages - Get all lead stages
 export async function GET(req: NextRequest) {
