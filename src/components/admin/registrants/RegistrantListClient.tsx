@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { webinars as Webinar } from '@prisma/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -20,10 +21,7 @@ interface Registrant {
   };
 }
 
-interface Webinar {
-  id: string;
-  title: string;
-}
+
 
 interface RegistrantListClientProps {
   initialRegistrants: Registrant[];
@@ -113,13 +111,13 @@ export default function RegistrantListClient({
             <tbody className="bg-white divide-y divide-gray-200">
               {initialRegistrants.map((reg) => (
                 <tr key={reg.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{reg.lead.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{reg.lead?.name || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    <div>{reg.lead.email}</div>
-                    <div className="text-xs text-gray-500">{reg.lead.phone}</div>
+                    <div>{reg.lead?.email || 'No Email'}</div>
+                    <div className="text-xs text-gray-500">{reg.lead?.phone || 'No Phone'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead.schoolName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.webinar.title}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead?.schoolName || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.webinar?.title || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatDate(reg.registeredAt)}</td>
                 </tr>
               ))}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '../../../../../prisma/client';
+import { db as prisma } from '@/lib/db';
 import { auth } from '../../../../auth';
 import { Role } from '@prisma/client';
 
@@ -51,8 +51,18 @@ export async function GET(req: NextRequest) {
 
     const totalRegistrants = await prisma.webinar_registrations.count({ where: whereClause });
 
+    // Map the response to match the frontend's expected data structure
+    const mappedRegistrants = registrants.map((reg: any) => {
+      const { Lead, webinars, ...rest } = reg;
+      return {
+        ...rest,
+        lead: Lead,
+        webinar: webinars,
+      };
+    });
+
     return NextResponse.json({
-      registrants,
+      registrants: mappedRegistrants,
       totalPages: Math.ceil(totalRegistrants / limit),
       currentPage: page,
       totalRegistrants,
