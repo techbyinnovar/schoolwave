@@ -67,12 +67,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       if (availableAddon) {
         console.log(`Addon match found: ${availableAddon.name} (id: ${availableAddon.id}) matches subscription addon (addonId: ${subAddon.addonId})`);
         
-        // Add the addon with its terms to the selected addons
+        // Add the addon with its terms and quantity to the selected addons
         const terms = typeof subAddon === 'object' && 'terms' in subAddon ? subAddon.terms : 1;
+        const quantity = typeof subAddon === 'object' && 'quantity' in subAddon ? subAddon.quantity : 1;
+        
+        console.log(`Using terms: ${terms} and quantity: ${quantity} for addon ${availableAddon.name}`);
         
         selectedAddons.push({
           ...availableAddon,
-          terms: terms || 1
+          terms: terms || 1,
+          quantity: quantity || 1
         });
       } else {
         console.log(`Warning: No matching available addon found for subscription addon with addonId: ${subAddon.addonId}`);
@@ -100,29 +104,32 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         total: planTotal,
       },
       ...selectedAddons.map((addon: any) => {
-        // The terms are already included in each addon object from our earlier processing
+        // The terms and quantity are already included in each addon object from our earlier processing
         const addonTerm = addon.terms || 1;
+        const addonQuantity = addon.quantity || 1;
         const addonPrice = addon.price || 0;
-        const addonTotal = addonPrice * addonTerm;
+        const addonTotal = addonPrice * addonTerm * addonQuantity;
         
-        console.log(`Creating line item for addon: ${addon.name}, price: ${addonPrice}, terms: ${addonTerm}, total: ${addonTotal}`);
+        console.log(`Creating line item for addon: ${addon.name}, price: ${addonPrice}, quantity: ${addonQuantity}, terms: ${addonTerm}, total: ${addonTotal}`);
         
         return {
           type: 'addon',
           name: addon.name,
           unitPrice: addonPrice,
+          quantity: addonQuantity,
           terms: addonTerm,
           total: addonTotal,
         };
       })
     ];
     const addonTotal = selectedAddons.reduce((sum: number, addon: any) => {
-      // The terms are already included in each addon object from our earlier processing
+      // The terms and quantity are already included in each addon object from our earlier processing
       const addonTerm = addon.terms || 1;
+      const addonQuantity = addon.quantity || 1;
       const addonPrice = addon.price || 0;
-      const lineTotal = addonPrice * addonTerm;
+      const lineTotal = addonPrice * addonTerm * addonQuantity;
       
-      console.log(`Calculating addon total: ${addon.name}, price: ${addonPrice}, terms: ${addonTerm}, total: ${lineTotal}`);
+      console.log(`Calculating addon total: ${addon.name}, price: ${addonPrice}, quantity: ${addonQuantity}, terms: ${addonTerm}, total: ${lineTotal}`);
       return sum + lineTotal;
     }, 0);
     
