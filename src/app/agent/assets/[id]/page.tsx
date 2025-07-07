@@ -12,13 +12,27 @@ const AssetDetailPage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    setLoading(true);
     fetch(`/api/assets/${id}`)
       .then(res => res.json())
       .then(data => {
-        if (!data.published) throw new Error('Not found');
-        setAsset(data);
+        console.log('Asset detail API response:', data);
+        
+        // Handle different response formats
+        const assetData = data.result ? data.result : data;
+        
+        // Check if asset exists and is published
+        if (!assetData || !assetData.published) {
+          throw new Error('Asset not found or not published');
+        }
+        
+        console.log('Asset data processed:', assetData);
+        setAsset(assetData);
       })
-      .catch(() => setError('Could not load asset'))
+      .catch((err) => {
+        console.error('Error loading asset:', err);
+        setError('Could not load asset');
+      })
       .finally(() => setLoading(false));
   }, [id]);
 

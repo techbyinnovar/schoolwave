@@ -12,10 +12,22 @@ const AgentAssetsPage = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    setLoading(true);
     fetch('/api/assets')
       .then(res => res.json())
-      .then(data => setAssets(data.filter((a: any) => a.published)))
-      .catch(() => setError('Failed to load assets'))
+      .then(data => {
+        console.log('Agent assets API response:', data);
+        // Handle both direct array response and result.data pattern
+        const assetsData = Array.isArray(data) ? data : (data.result?.data || []);
+        // Filter for published assets only
+        const publishedAssets = assetsData.filter((a: any) => a.published);
+        console.log('Published assets count:', publishedAssets.length);
+        setAssets(publishedAssets);
+      })
+      .catch((err) => {
+        console.error('Error loading assets:', err);
+        setError('Failed to load assets');
+      })
       .finally(() => setLoading(false));
   }, []);
 
