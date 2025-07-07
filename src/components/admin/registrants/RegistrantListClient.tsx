@@ -41,6 +41,8 @@ export default function RegistrantListClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedWebinar, setSelectedWebinar] = useState(searchParams.get('webinarId') || '');
+  const [page, setPage] = useState(currentPage || 1);
+  const [loading, setLoading] = useState(false);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const webinarId = e.target.value;
@@ -61,7 +63,23 @@ export default function RegistrantListClient({
     router.push(`/admin/registrants?${params.toString()}`);
   };
 
-  // Add debug logging for initial props
+  useEffect(() => {
+    setLoading(true);
+    
+    // Get webinarId from URL if present
+    const webinarId = searchParams?.get('webinarId');
+    const pageParam = searchParams?.get('page') || '1';
+    const currentPage = parseInt(pageParam, 10) || 1;
+    
+    console.log('[RegistrantListClient] URL parameters:', { 
+      webinarId: webinarId || 'none', 
+      page: pageParam,
+      currentPage
+    });
+    
+    setPage(currentPage);
+  }, [searchParams]);
+
   useEffect(() => {
     console.log('[RegistrantListClient] Received props:', { 
       registrantsCount: initialRegistrants?.length || 0,
@@ -136,17 +154,17 @@ export default function RegistrantListClient({
               {initialRegistrants.map((reg) => (
                 <tr key={reg.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {reg.lead?.name || (reg.Lead?.name || 'N/A')}
+                    {reg.lead?.name || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    <div>{reg.lead?.email || (reg.Lead?.email || 'No Email')}</div>
-                    <div className="text-xs text-gray-500">{reg.lead?.phone || (reg.Lead?.phone || 'No Phone')}</div>
+                    <div>{reg.lead?.email || 'No Email'}</div>
+                    <div className="text-xs text-gray-500">{reg.lead?.phone || 'No Phone'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {reg.lead?.schoolName || (reg.Lead?.schoolName || 'N/A')}
+                    {reg.lead?.schoolName || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {reg.webinar?.title || (reg.webinars?.title || 'N/A')}
+                    {reg.webinar?.title || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     {formatDate(reg.registeredAt)}

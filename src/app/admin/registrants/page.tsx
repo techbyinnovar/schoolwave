@@ -55,6 +55,7 @@ async function getRegistrants(page: number = 1, webinarId?: string): Promise<Fet
     console.log('[AdminRegistrantsPage] Request headers:', {
       cookie: requestHeaders.has('cookie') ? 'Present' : 'Missing',
       authorization: requestHeaders.has('authorization') ? 'Present' : 'Missing',
+      userAgent: requestHeaders.get('user-agent')?.substring(0, 50) || 'Missing',
     });
     
     const res = await fetch(apiUrl, {
@@ -76,12 +77,25 @@ async function getRegistrants(page: number = 1, webinarId?: string): Promise<Fet
     try {
       const data = await res.json();
       console.log('[AdminRegistrantsPage] Successfully fetched registrants count:', data.registrants?.length || 0);
+      console.log('[AdminRegistrantsPage] Full API response structure:', {
+        keys: Object.keys(data),
+        hasRegistrants: !!data.registrants,
+        registrantsIsArray: Array.isArray(data.registrants),
+        totalPages: data.totalPages,
+        currentPage: data.currentPage,
+        totalRegistrants: data.totalRegistrants
+      });
+      
       if (data.registrants?.length > 0) {
+        const firstReg = data.registrants[0];
         console.log('[AdminRegistrantsPage] First registrant sample:', {
-          id: data.registrants[0].id,
-          hasLead: !!data.registrants[0].lead,
-          leadFields: data.registrants[0].lead ? Object.keys(data.registrants[0].lead) : 'N/A',
+          id: firstReg.id,
+          hasLead: !!firstReg.lead,
+          leadFields: firstReg.lead ? Object.keys(firstReg.lead) : 'N/A',
+          rawRegistrant: JSON.stringify(firstReg).substring(0, 200) + '...'
         });
+      } else {
+        console.log('[AdminRegistrantsPage] No registrants found in response');
       }
       return data;
     } catch (jsonError) {
@@ -92,6 +106,11 @@ async function getRegistrants(page: number = 1, webinarId?: string): Promise<Fet
     }
   } catch (error) {
     console.error('[AdminRegistrantsPage] Network or other error in getRegistrants:', error);
+    console.error('[AdminRegistrantsPage] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    });
     return null;
   }
 }
