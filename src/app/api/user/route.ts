@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "../../../../prisma/client";
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 
 
 export async function GET(req: NextRequest) {
@@ -33,6 +34,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ user });
   } else {
     // Create new user
+    // Generate a unique ID for the new user
+    data.id = uuidv4();
+    
     // If role is AGENT and no referralCode provided, auto-generate one
     if (data.role === 'AGENT' && !data.referralCode) {
       let code: string;
@@ -46,6 +50,10 @@ export async function POST(req: NextRequest) {
       } while (exists);
       data.referralCode = code;
     }
+    
+    // Add updatedAt field if it's required by the schema
+    data.updatedAt = new Date();
+    
     const user = await prisma.user.create({ data });
     return NextResponse.json({ user });
   }

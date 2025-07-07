@@ -351,7 +351,15 @@ function AdminCrmPageInner() {
     fetch("/api/lead")
       .then(res => res.json())
       .then(data => {
-        const fetchedLeads = data.result?.data ?? [];
+        // Map the Stage property to stage for consistency with the Lead type
+        const fetchedLeads = (data.result?.data ?? []).map((lead: any) => ({
+          ...lead,
+          // Map Stage to stage for consistency
+          stage: lead.Stage || lead.stage,
+          // Remove the original Stage property to avoid confusion
+          Stage: undefined
+        }));
+        console.log('Mapped leads with stage:', fetchedLeads);
         setLeads(fetchedLeads);
         
         // For each lead, fetch its last disposition from history
