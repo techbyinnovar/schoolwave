@@ -17,12 +17,25 @@ export async function GET(req: NextRequest) {
   const session = await auth();
   const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'CONTENT_ADMIN';
   const where = isAdmin ? {} : { published: true };
-  const assets = await prisma.assets.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    include: { User: { select: { id: true, name: true, email: true } } },
-  });
-  return NextResponse.json(assets);
+  
+  try {
+    const assets = await prisma.assets.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { User: { select: { id: true, name: true, email: true } } },
+    });
+    
+    // Return in the consistent format used by other API routes
+    return NextResponse.json({ 
+      result: { 
+        data: assets,
+        count: assets.length
+      } 
+    });
+  } catch (error) {
+    console.error('Error fetching assets:', error);
+    return NextResponse.json({ error: 'Failed to fetch assets' }, { status: 500 });
+  }
 }
 
 // POST /api/assets - Create asset (admin only)

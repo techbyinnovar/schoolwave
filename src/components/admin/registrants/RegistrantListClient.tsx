@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { webinars as Webinar } from '@prisma/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -61,6 +61,29 @@ export default function RegistrantListClient({
     router.push(`/admin/registrants?${params.toString()}`);
   };
 
+  // Add debug logging for initial props
+  useEffect(() => {
+    console.log('[RegistrantListClient] Received props:', { 
+      registrantsCount: initialRegistrants?.length || 0,
+      currentPage,
+      totalPages,
+      totalRegistrants,
+      webinarsCount: allWebinars?.length || 0
+    });
+    
+    // Log first registrant for debugging
+    if (initialRegistrants?.length > 0) {
+      const firstReg = initialRegistrants[0];
+      console.log('[RegistrantListClient] First registrant sample:', {
+        id: firstReg.id,
+        hasLead: !!firstReg.lead,
+        leadFields: firstReg.lead ? Object.keys(firstReg.lead) : 'N/A',
+        hasWebinar: !!firstReg.webinar,
+        webinarFields: firstReg.webinar ? Object.keys(firstReg.webinar) : 'N/A',
+      });
+    }
+  }, [initialRegistrants, currentPage, totalPages, totalRegistrants, allWebinars]);
+
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
@@ -69,6 +92,7 @@ export default function RegistrantListClient({
         day: 'numeric',
       });
     } catch (e) {
+      console.error('[RegistrantListClient] Error formatting date:', e);
       return 'Invalid Date';
     }
   };
@@ -111,14 +135,22 @@ export default function RegistrantListClient({
             <tbody className="bg-white divide-y divide-gray-200">
               {initialRegistrants.map((reg) => (
                 <tr key={reg.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{reg.lead?.name || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    <div>{reg.lead?.email || 'No Email'}</div>
-                    <div className="text-xs text-gray-500">{reg.lead?.phone || 'No Phone'}</div>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {reg.lead?.name || (reg.Lead?.name || 'N/A')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.lead?.schoolName || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{reg.webinar?.title || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatDate(reg.registeredAt)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <div>{reg.lead?.email || (reg.Lead?.email || 'No Email')}</div>
+                    <div className="text-xs text-gray-500">{reg.lead?.phone || (reg.Lead?.phone || 'No Phone')}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {reg.lead?.schoolName || (reg.Lead?.schoolName || 'N/A')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {reg.webinar?.title || (reg.webinars?.title || 'N/A')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {formatDate(reg.registeredAt)}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -14,8 +14,16 @@ const AdminAssetsPage = () => {
   useEffect(() => {
     fetch('/api/assets')
       .then(res => res.json())
-      .then(setAssets)
-      .catch(() => setError('Failed to load assets'))
+      .then(data => {
+        console.log('Assets API response:', data);
+        // Handle both direct array response and result.data pattern
+        const assetsData = Array.isArray(data) ? data : (data.result?.data || []);
+        setAssets(assetsData);
+      })
+      .catch((err) => {
+        console.error('Error loading assets:', err);
+        setError('Failed to load assets');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -66,7 +74,7 @@ const AdminAssetsPage = () => {
                   <td className="px-4 py-2 text-center">
                     <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${asset.published ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>{asset.published ? 'Yes' : 'No'}</span>
                   </td>
-                  <td className="px-4 py-2 text-gray-700">{asset.createdBy?.name || asset.createdBy?.email || '—'}</td>
+                  <td className="px-4 py-2 text-gray-700">{asset.User?.name || asset.User?.email || asset.createdBy?.name || asset.createdBy?.email || '—'}</td>
                   <td className="px-4 py-2 text-gray-500">{new Date(asset.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-2 flex gap-2">
                     <Link href={`/agent/assets/${asset.id}`} className="text-indigo-600 hover:underline">View</Link>
