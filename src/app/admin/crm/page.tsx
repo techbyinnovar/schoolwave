@@ -377,14 +377,18 @@ function AdminCrmPageInner() {
       .then(res => res.json())
       .then(data => {
         // Map the Stage property to stage for consistency with the Lead type
+        // Also map assignedUser to agent for display in the UI
         const fetchedLeads = (data.result?.data ?? []).map((lead: any) => ({
           ...lead,
           // Map Stage to stage for consistency
           stage: lead.Stage || lead.stage,
-          // Remove the original Stage property to avoid confusion
-          Stage: undefined
+          // Map assignedUser to agent for display in the UI
+          agent: lead.assignedUser || null,
+          // Remove the original properties to avoid confusion
+          Stage: undefined,
+          assignedUser: undefined
         }));
-        console.log('Mapped leads with stage:', fetchedLeads);
+        console.log('Mapped leads with stage and agent:', fetchedLeads);
         setLeads(fetchedLeads);
         
         // For each lead, fetch its last disposition from history
