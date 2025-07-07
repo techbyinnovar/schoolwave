@@ -35,12 +35,55 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // Find plan and addons
     const plan = plans.find((p: any) => p.name === subscription.planName);
     const addonObjs = Array.isArray(subscription.addons) ? subscription.addons : [];
+    console.log('Subscription addons:', JSON.stringify(addonObjs, null, 2));
+    console.log('Available addons from settings:', JSON.stringify(addonsList, null, 2));
+    
     // Map addon IDs to their terms from the subscription.addons JSON
     const addonTermsMap: Record<string, number> = {};
     addonObjs.forEach((a: any) => {
-      if (a.id) addonTermsMap[a.id] = a.terms || 1;
+      // Use addonId (not id) as this is how addons are stored in the subscription model
+      if (a.addonId) {
+        addonTermsMap[a.addonId] = a.terms || 1;
+        console.log(`Mapping addon ID ${a.addonId} to terms ${a.terms || 1}`);
+      } else {
+        console.log(`Warning: Addon object missing addonId:`, JSON.stringify(a, null, 2));
+      }
     });
-    const selectedAddons = addonsList.filter((a: any) => addonObjs.some((o: any) => o.id === a.id));
+    
+    // Filter available addons based on the addonId in subscription.addons
+    const selectedAddons = [];
+    
+    // Loop through each addon in the subscription
+    for (const subAddon of addonObjs) {
+      // Type guard to ensure subAddon is an object with addonId
+      if (!subAddon || typeof subAddon !== 'object' || !('addonId' in subAddon) || !subAddon.addonId) {
+        console.log(`Warning: Subscription addon missing addonId:`, JSON.stringify(subAddon, null, 2));
+        continue;
+      }
+      
+      // Find the matching addon in the available addons list
+      const availableAddon = addonsList.find((a: any) => a.id === subAddon.addonId);
+      
+      if (availableAddon) {
+        console.log(`Addon match found: ${availableAddon.name} (id: ${availableAddon.id}) matches subscription addon (addonId: ${subAddon.addonId})`);
+        
+        // Add the addon with its terms and quantity to the selected addons
+        const terms = typeof subAddon === 'object' && 'terms' in subAddon ? subAddon.terms : 1;
+        const quantity = typeof subAddon === 'object' && 'quantity' in subAddon ? subAddon.quantity : 1;
+        
+        console.log(`Using terms: ${terms} and quantity: ${quantity} for addon ${availableAddon.name}`);
+        
+        selectedAddons.push({
+          ...availableAddon,
+          terms: terms || 1,
+          quantity: quantity || 1
+        });
+      } else {
+        console.log(`Warning: No matching available addon found for subscription addon with addonId: ${subAddon.addonId}`);
+      }
+    }
+    
+    console.log('Selected addons after filtering:', JSON.stringify(selectedAddons, null, 2));
     const planTerms = subscription.terms || (
       subscription.startDate && subscription.endDate
         ? calculateTerms(subscription.startDate, subscription.endDate)
@@ -61,20 +104,38 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         total: planTotal,
       },
       ...selectedAddons.map((addon: any) => {
-        const addonTerm = addonTermsMap[addon.id] || 1;
+        // The terms and quantity are already included in each addon object from our earlier processing
+        const addonTerm = addon.terms || 1;
+        const addonQuantity = addon.quantity || 1;
+        const addonPrice = addon.price || 0;
+        const addonTotal = addonPrice * addonTerm * addonQuantity;
+        
+        console.log(`Creating line item for addon: ${addon.name}, price: ${addonPrice}, quantity: ${addonQuantity}, terms: ${addonTerm}, total: ${addonTotal}`);
+        
         return {
           type: 'addon',
           name: addon.name,
-          unitPrice: addon.price || 0,
+          unitPrice: addonPrice,
+          quantity: addonQuantity,
           terms: addonTerm,
-          total: (addon.price || 0) * addonTerm,
+          total: addonTotal,
         };
       })
     ];
-    const invoiceTotal = planTotal + selectedAddons.reduce((sum: number, a: any) => {
-      const addonTerm = addonTermsMap[a.id] || 1;
-      return sum + ((a.price || 0) * addonTerm);
+    const addonTotal = selectedAddons.reduce((sum: number, addon: any) => {
+      // The terms and quantity are already included in each addon object from our earlier processing
+      const addonTerm = addon.terms || 1;
+      const addonQuantity = addon.quantity || 1;
+      const addonPrice = addon.price || 0;
+      const lineTotal = addonPrice * addonTerm * addonQuantity;
+      
+      console.log(`Calculating addon total: ${addon.name}, price: ${addonPrice}, quantity: ${addonQuantity}, terms: ${addonTerm}, total: ${lineTotal}`);
+      return sum + lineTotal;
     }, 0);
+    
+    const invoiceTotal = planTotal + addonTotal;
+    
+    console.log('Invoice total:', invoiceTotal, 'Plan total:', planTotal, 'Addon total:', addonTotal);
     
     // Generate invoice number in format: SW-YYYY-NNN-R
     const currentYear = new Date().getFullYear();
