@@ -85,6 +85,10 @@ function AdminCrmPageInner() {
   const pathname = usePathname();
   const userRole = session?.user?.role;
   const userId = session?.user?.id;
+  
+  // State for lead modal
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showLeadModal, setShowLeadModal] = useState(false);
 
   const [tab, setTab] = useState<'leads' | 'stages'>('leads');
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -103,17 +107,39 @@ function AdminCrmPageInner() {
       setDispositionFilter(params.get('disposition') || "");
       setDueTodayFilter(params.get('dueToday') === 'true');
       setDueWeekFilter(params.get('dueWeek') === 'true');
+      
+      // Check for lead parameter
+      const leadId = params.get('lead');
+      if (leadId) {
+        const lead = leads.find(l => l.id === leadId);
+        if (lead) {
+          setSelectedLead(lead);
+          setShowLeadModal(true);
+        }
+      } else {
+        setShowLeadModal(false);
+      }
     };
     
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [leads]);
   
   // Debug logging for current URL
   useEffect(() => {
     console.log('Current URL:', window.location.href);
     console.log('Current search params:', window.location.search);
-  }, []);
+    
+    // Check for lead parameter in URL on initial load
+    const leadId = searchParams.get('lead');
+    if (leadId && leads.length > 0) {
+      const lead = leads.find(l => l.id === leadId);
+      if (lead) {
+        setSelectedLead(lead);
+        setShowLeadModal(true);
+      }
+    }
+  }, [searchParams, leads]);
 
   // Log ownedBy details for debugging
   useEffect(() => {
@@ -256,7 +282,6 @@ function AdminCrmPageInner() {
   
   const initialLeadParam = searchParams?.get('lead') || null;
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialLeadParam);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [leadDetailLoading, setLeadDetailLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -956,7 +981,21 @@ function AdminCrmPageInner() {
                                     <div className="text-xs text-gray-500 mt-1">Assigned: {lead.agent ? `${lead.agent.name ?? lead.agent.email}` : <span className="italic text-gray-400">Unassigned</span>}</div>
                                     <div className="flex gap-2 mt-2">
                                       <button onClick={e => { e.stopPropagation(); handleEdit(lead); }} className="text-blue-600 hover:underline text-xs">Edit</button>
-                                      <button onClick={e => { e.stopPropagation(); window.location.href = `/admin/crm/lead/${lead.id}`; }} className="text-gray-600 hover:underline text-xs">View</button>
+                                      <button 
+                                        onClick={e => { 
+                                          e.stopPropagation(); 
+                                          // Update URL with lead ID as query parameter
+                                          const params = new URLSearchParams(window.location.search);
+                                          params.set('lead', lead.id);
+                                          router.push(`${pathname}?${params.toString()}`);
+                                          setSelectedLead(lead);
+                                          setSelectedLeadId(lead.id);
+                                          setShowLeadModal(true);
+                                        }} 
+                                        className="text-gray-600 hover:underline text-xs"
+                                      >
+                                        View
+                                      </button>
                                     </div>
                                   </div>
                                 )}
@@ -1079,6 +1118,24 @@ function AdminCrmPageInner() {
               </select>
               <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded font-semibold mt-2">{loading ? "Saving..." : editId ? "Update Lead" : "Create Lead"}</button>
             </form>
+          </Modal>
+          {/* Lead Detail Modal */}
+          <Modal 
+            open={showLeadModal && selectedLead !== null} 
+            onClose={() => {
+              setShowLeadModal(false);
+              // Remove lead parameter from URL
+              const params = new URLSearchParams(window.location.search);
+              params.delete('lead');
+              router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            }}
+            full={true}
+          >
+            {selectedLead && (
+              <div className="p-6">
+                <LeadDetailContent leadId={selectedLead.id} />
+              </div>
+            )}
           </Modal>
         </div>
       </main>

@@ -99,10 +99,18 @@ export default function LeadDetailContent({ leadId }: Props) {
       setAgents(aRes.result?.data ?? []);
       setStages(sRes.result?.data ?? []);
       const l = lRes.result?.data ?? null;
-      setLead(l);
+      
+      // Map API response fields to expected frontend fields
+      const mappedLead = l ? {
+        ...l,
+        notes: l.Note || [],
+        history: l.EntityHistory || []
+      } : null;
+      
+      setLead(mappedLead);
       setEditOwner(l?.ownedBy?.id || null);
       setEditAssigned(l?.agent?.id || null);
-      setEditStage(l?.stage?.id || null);
+      setEditStage(l?.Stage?.id || null);
       
       // Set available actions
       setAvailableActions((actRes.result?.data || []).map((a: any) => a.name || a));
@@ -321,19 +329,22 @@ export default function LeadDetailContent({ leadId }: Props) {
         </button>
         {showHistory && (
           <ul className="mb-8 border rounded p-4 bg-gray-50">
-            {lead.history.length===0 && <li>No history yet.</li>}
-            {lead.history.map(h=> (
-              <li key={h.id} className="mb-2">
-                <span className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString()}</span> —
-                {h.type === "stage_change" && (<span> <b>{h.user?.name || "System"}</b> moved from <b>{h.fromStage}</b> to <b>{h.toStage}</b></span>)}
-                {h.type === "action" && (<span> <b>{h.user?.name || "System"}</b> logged action <b>{h.actionType}</b>{h.disposition && <span> with disposition <b>{h.disposition}</b></span>}{h.note && `: ${h.note}`}</span>)}
-              </li>
-            ))}
+            {!lead.history || lead.history.length === 0 ? (
+              <li>No history yet.</li>
+            ) : (
+              lead.history.map(h => (
+                <li key={h.id} className="mb-2">
+                  <span className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString()}</span> —
+                  {h.type === "stage_change" && (<span> <b>{h.user?.name || "System"}</b> moved from <b>{h.fromStage}</b> to <b>{h.toStage}</b></span>)}
+                  {h.type === "action" && (<span> <b>{h.user?.name || "System"}</b> logged action <b>{h.actionType}</b>{h.disposition && <span> with disposition <b>{h.disposition}</b></span>}{h.note && `: ${h.note}`}</span>)}
+                </li>
+              ))
+            )}
           </ul>
         )}
-      </div>
+</div>
 
-      {/* notes */}
+{/* notes */}
       <div className="mb-4">
         <button
           className="mb-2 px-3 py-1 bg-gray-200 rounded text-left w-full flex justify-between items-center"
@@ -345,12 +356,15 @@ export default function LeadDetailContent({ leadId }: Props) {
         {showNotes && (
           <>
             <ul className="mb-4 border rounded p-4 bg-gray-50">
-              {lead.notes.length === 0 && <li>No notes yet.</li>}
-              {lead.notes.map(n => (
-                <li key={n.id} className="mb-2">
-                  <span className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</span> — <b>{n.user?.name || "Unknown"}</b>: {n.content}
-                </li>
-              ))}
+              {!lead.notes || lead.notes.length === 0 ? (
+                <li>No notes yet.</li>
+              ) : (
+                lead.notes.map(n => (
+                  <li key={n.id} className="mb-2">
+                    <span className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</span> — <b>{n.user?.name || "Unknown"}</b>: {n.content}
+                  </li>
+                ))
+              )}
             </ul>
             <div className="flex flex-wrap gap-2 mb-2">
               <input
