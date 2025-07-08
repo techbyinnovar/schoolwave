@@ -51,18 +51,11 @@ async function getRegistrants(page: number = 1, webinarId?: string): Promise<Fet
   console.log('[AdminRegistrantsPage] Fetching registrants from:', apiUrl);
 
   try {
-    const requestHeaders = headers(); // Get incoming request headers
-    console.log('[AdminRegistrantsPage] Request headers:', {
-      cookie: requestHeaders.has('cookie') ? 'Present' : 'Missing',
-      authorization: requestHeaders.has('authorization') ? 'Present' : 'Missing',
-      userAgent: requestHeaders.get('user-agent')?.substring(0, 50) || 'Missing',
-    });
+    // Use server-side fetch without forwarding cookies - will use the server's auth context
+    console.log('[AdminRegistrantsPage] Fetching with server credentials');
     
     const res = await fetch(apiUrl, {
       cache: 'no-store',
-      headers: {
-        'Cookie': requestHeaders.get('cookie') || '', // Forward cookies
-      },
     });
     console.log('[AdminRegistrantsPage] Response status:', res.status, 'OK:', res.ok);
 
