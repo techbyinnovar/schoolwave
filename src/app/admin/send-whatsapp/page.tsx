@@ -163,16 +163,29 @@ export default function TestWhatsAppPage() {
       // Prefer Cloudinary URL over data URL if available
       const finalMediaUrl = cloudinaryMedia || mediaUrl;
       
+      // Log the media URL for debugging
+      if (finalMediaUrl) {
+        addLog('info', `Using media URL: ${finalMediaUrl.substring(0, 30)}...`);
+      }
+      
+      const payload = { 
+        to: phoneNumber, 
+        message
+      };
+      
+      // Only include mediaUrl if it's a valid URL
+      if (finalMediaUrl && finalMediaUrl.startsWith('http')) {
+        Object.assign(payload, { mediaUrl: finalMediaUrl });
+      }
+      
+      addLog('info', `Sending payload: ${JSON.stringify(payload, null, 2)}`);
+      
       const response = await fetch('/api/test-whatsapp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          to: phoneNumber, 
-          message,
-          mediaUrl: finalMediaUrl || undefined
-        }),
+        body: JSON.stringify(payload),
       });
       
       const data = await response.json();

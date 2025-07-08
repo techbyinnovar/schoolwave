@@ -48,16 +48,16 @@ export function formatPhoneNumber(phoneNumber: string): string {
   // Handle Nigerian number formats
   if (cleaned.startsWith("0")) {
     // Remove the leading 0 and add +234
-    return "+234" + cleaned.substring(1);
-  } else if (cleaned.startsWith("234") && !cleaned.startsWith("+234")) {
-    // Add + to numbers starting with 234
-    return "+" + cleaned;
-  } else if (cleaned.startsWith("+234")) {
+    return "234" + cleaned.substring(1);
+  } else if (cleaned.startsWith("+")) {
+    // Remove the + sign if present
+    return cleaned.substring(1);
+  } else if (cleaned.startsWith("234")) {
     // Already in the correct format
     return cleaned;
   } else {
-    // If none of the above, assume international format and ensure + is present
-    return cleaned.startsWith("+") ? cleaned : "+" + cleaned;
+    // If none of the above, assume it's already in the correct format
+    return cleaned;
   }
 }
 
@@ -81,18 +81,32 @@ export async function sendWhatsAppMessage(
     let mediaUrl: string;
     let caption = message;
 
+    // Determine the media URL based on the input type
     if (typeof media === "string") {
       mediaUrl = media;
+      console.log('[WhatsApp API] Using string media URL:', mediaUrl.substring(0, 30) + '...');
     } else if (Array.isArray(media)) {
       if (media.length > 0 && typeof media[0] === "object" && "url" in media[0]) {
         mediaUrl = (media as ImageObject[])[0].url;
+        console.log('[WhatsApp API] Using object media URL:', mediaUrl.substring(0, 30) + '...');
         if ((media as ImageObject[])[0].description) {
           caption = `${message}\n\n${(media as ImageObject[])[0].description}`;
         }
-      } else {
+      } else if (media.length > 0) {
         mediaUrl = media[0] as string;
+        console.log('[WhatsApp API] Using array media URL:', mediaUrl.substring(0, 30) + '...');
+      } else {
+        console.log('[WhatsApp API] Empty media array, falling back to text message');
+        return sendTextMessage(formattedNumber, message);
       }
     } else {
+      console.log('[WhatsApp API] Invalid media format, falling back to text message');
+      return sendTextMessage(formattedNumber, message);
+    }
+    
+    // Validate media URL
+    if (!mediaUrl || typeof mediaUrl !== 'string' || !mediaUrl.startsWith('http')) {
+      console.warn('[WhatsApp API] Invalid media URL format:', mediaUrl);
       return sendTextMessage(formattedNumber, message);
     }
 
@@ -106,7 +120,7 @@ export async function sendWhatsAppMessage(
 
     // Create request payload
     const payload: Record<string, any> = {
-      chatId: `${formattedNumber}@c.us`,
+      chatId: formattedNumber,
       mediaUrl: mediaUrl
     };
     
@@ -183,7 +197,7 @@ async function sendTextMessage(formattedNumber: string, message: string) {
       authorization: `Bearer ${WAAPI_TOKEN}`
     },
     body: JSON.stringify({
-      chatId: `${formattedNumber}@c.us`,
+      chatId: formattedNumber,
       message: message
     })
   };
