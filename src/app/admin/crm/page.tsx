@@ -343,6 +343,65 @@ function AdminCrmPageInner() {
   // Kanban state for leads by stage
   const [kanbanLeads, setKanbanLeads] = useState<Record<string, Lead[]>>({});
 
+  // Handle bulk assignment of leads to an agent
+  const handleBulkAssign = async (leadIds: string[], agentId: string) => {
+    console.log('Page component: handleBulkAssign called with:', { leadIds, agentId });
+    
+    try {
+      // Find agent details for logging
+      const agent = agents.find(a => a.id === agentId);
+      console.log('Assigning to agent:', agent);
+      
+      console.log('Sending bulk assignment request to API...');
+      const response = await fetch('/api/lead/bulk-assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ leadIds, agentId }),
+      });
+
+      console.log('API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API returned error:', errorData);
+        throw new Error(errorData.error || 'Failed to assign leads');
+      }
+
+      const result = await response.json();
+      console.log('Bulk assignment API result:', result);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Assignment failed on server');
+      }
+      
+      // Update leads in state to reflect the new assignments
+      console.log('Updating local state with new assignments');
+      setLeads(prevLeads => {
+        const updatedLeads = prevLeads.map(lead => 
+          leadIds.includes(lead.id) 
+            ? { ...lead, assignedTo: agentId, agent: agents.find(a => a.id === agentId) } 
+            : lead
+        );
+        console.log('State updated, sample lead:', updatedLeads.find(l => leadIds.includes(l.id)));
+        return updatedLeads;
+      });
+
+      // Show success message
+      const message = `Successfully assigned ${result.updatedLeads} leads to agent`;
+      console.log(message);
+      alert(message);
+      
+      // Return the result for the UI component to handle
+      return result;
+    } catch (error) {
+      console.error('Error in bulk assignment:', error);
+      alert(`Failed to assign leads: ${(error as Error).message}`);
+      throw error;
+    }
+  };
+
   // Helper to get stage name by lead.stage
   const getStageName = (stageValue: string | { name: string } | undefined): string => {
     if (!stageValue) return '';
@@ -697,25 +756,72 @@ function AdminCrmPageInner() {
   };
 
 
-  // Bulk assign handler
-  const handleBulkAssign = async () => {
-    if (!assignAgentId || selectedLeads.length === 0) return;
+  // Bulk assign UI handler
+  const handleBulkAssignUI = async (leadIds: string[], agentId: string) => {
+    if (!agentId || agentId.trim() === "") {
+      setError("Please select an agent to assign leads to");
+      console.log('Bulk assign validation failed: Missing agent ID', { agentId });
+      return;
+    }
+    
+    if (leadIds.length === 0) {
+      setError("Please select at least one lead to assign");
+      console.log('Bulk assign validation failed: No leads selected', { selectedLeadsCount: leadIds.length });
+      return;
+    }
+    
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/action", {
+      console.log('Sending bulk assignment request to /api/lead/bulk-assign', { 
+        leadIds, 
+        agentId 
+      });
+      
+      const res = await fetch("/api/lead/bulk-assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadIds: selectedLeads, agentId: assignAgentId }),
+        body: JSON.stringify({
+          leadIds,
+          agentId,
+          leadCount: leadIds.length
+        }),
       });
-      if (!res.ok) throw new Error("Failed to assign leads");
+      
+      console.log('Bulk assignment response status:', res.status);
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('Bulk assignment API error:', errorData);
+        throw new Error(errorData.error || "Failed to assign leads");
+      }
+      
+      const result = await res.json();
+      console.log('Bulk assignment result:', result);
+      
       setSelectedLeads([]);
       setAssignAgentId("");
+      
       // Refresh leads
+      console.log('Refreshing leads after assignment');
       fetch("/api/lead")
         .then(res => res.json())
-        .then(data => setLeads(data.result?.data ?? []));
+        .then(data => {
+          console.log('Refreshed leads data:', data);
+          setLeads(data.result?.data ?? []);
+        });
+        
+      // Show success message with verification details
+      if (result.verificationResults) {
+        const { totalVerified, correctlyAssigned, incorrectlyAssigned } = result.verificationResults;
+        if (incorrectlyAssigned > 0) {
+          alert(`Assignment partially successful: ${correctlyAssigned} of ${totalVerified} leads were assigned correctly.`);
+        } else {
+          alert(`Successfully assigned ${correctlyAssigned} leads to agent.`);
+        }
+      }
     } catch (err: unknown) {
+      console.error('Error in bulk assignment:', err);
       setError(err instanceof Error ? err.message : String(err));
     }
     setLoading(false);
@@ -854,6 +960,11 @@ function AdminCrmPageInner() {
                 onSelectLead={handleSelectLead}
                 dispositions={dispositions}
                 leadTasks={leadTasks}
+                onBulkAssign={handleBulkAssignUI}
+                selectedLeads={selectedLeads}
+                setSelectedLeads={setSelectedLeads}
+                bulkAssignAgent={assignAgentId}
+                setBulkAssignAgent={setAssignAgentId}
               />
             </>
           )}

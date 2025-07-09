@@ -11,9 +11,14 @@ interface LeadTableProps {
   onSelectLead?: (id: string) => void;
   dispositions?: string[];
   leadTasks?: { leadId: string; dueDate: string; status: string }[];
+  onBulkAssign?: (leadIds: string[], agentId: string) => Promise<void>;
+  selectedLeads: string[];
+  setSelectedLeads: React.Dispatch<React.SetStateAction<string[]>>;
+  bulkAssignAgent: string;
+  setBulkAssignAgent: React.Dispatch<React.SetStateAction<string>>;
 }
 
-export default function LeadTable({ leads, agents, stages, userRole, onSelectLead, dispositions = [], leadTasks = [] }: LeadTableProps) {
+export default function LeadTable({ leads, agents, stages, userRole, onSelectLead, dispositions = [], leadTasks = [], onBulkAssign, selectedLeads, setSelectedLeads, bulkAssignAgent, setBulkAssignAgent }: LeadTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -27,6 +32,65 @@ export default function LeadTable({ leads, agents, stages, userRole, onSelectLea
     searchParams?.get('dueToday') === 'true' ? 'today' : 
     searchParams?.get('dueWeek') === 'true' ? 'this-week' : ""
   );
+  
+  // Assignment state is now received as props
+  const [isAssigning, setIsAssigning] = useState(false);
+  
+  // Toggle selection of a lead
+  const toggleLeadSelection = (e: React.ChangeEvent<HTMLInputElement>, leadId: string) => {
+    e.stopPropagation();
+    setSelectedLeads(prev => {
+      if (prev.includes(leadId)) {
+        return prev.filter(id => id !== leadId);
+      } else {
+        return [...prev, leadId];
+      }
+    });
+  };
+  
+  // Toggle selection of all leads
+  const toggleSelectAll = () => {
+    if (selectedLeads.length === filteredLeads.length) {
+      // If all are selected, deselect all
+      setSelectedLeads([]);
+    } else {
+      // Otherwise, select all filtered leads
+      setSelectedLeads(filteredLeads.map(lead => lead.id));
+    }
+  };
+  
+  // Handle bulk assignment of leads to an agent
+  const handleBulkAssign = async () => {
+    if (!bulkAssignAgent || selectedLeads.length === 0 || !onBulkAssign) {
+      console.log('Bulk assign validation failed:', { bulkAssignAgent, selectedLeadsCount: selectedLeads.length, hasOnBulkAssign: !!onBulkAssign });
+      return;
+    }
+    
+    console.log('Starting bulk assignment:', { 
+      agentId: bulkAssignAgent, 
+      selectedLeads, 
+      agentDetails: agents.find(a => a.id === bulkAssignAgent) 
+    });
+    
+    try {
+      setIsAssigning(true);
+      console.log('Calling onBulkAssign handler with agentId:', bulkAssignAgent);
+      await onBulkAssign(selectedLeads, bulkAssignAgent);
+      console.log('Bulk assignment completed successfully');
+      
+      // Show success message
+      alert(`Successfully assigned ${selectedLeads.length} leads to agent`);
+      
+      // Only clear selection after successful assignment
+      setSelectedLeads([]);
+      setBulkAssignAgent("");
+    } catch (error) {
+      console.error('Error in bulk assignment:', error);
+      alert(`Failed to assign leads: ${(error as Error).message || 'Unknown error'}`);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
   
   // Function to update URL with current filters
   const updateUrlWithFilters = useCallback(() => {
@@ -177,8 +241,49 @@ export default function LeadTable({ leads, agents, stages, userRole, onSelectLea
     });
   }, [leads, search, ownerFilter, assignedFilter, stageFilter, dispositionFilter, tasksDueFilter, leadTasksMap]);
 
+  // Handle row click to view lead details
+  const handleRowClick = (leadId: string) => {
+    if (onSelectLead) {
+      onSelectLead(leadId);
+    }
+  };
+  
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
+      {/* Bulk Assignment UI */}
+      {selectedLeads.length > 0 && (
+        <div className="bg-blue-50 p-4 mb-4 rounded-lg border border-blue-200 flex flex-wrap items-center gap-3">
+          <span className="font-medium text-blue-700">{selectedLeads.length} lead(s) selected</span>
+          <select
+            className="border rounded px-3 py-2 border-blue-300"
+            value={bulkAssignAgent}
+            onChange={e => setBulkAssignAgent(e.target.value)}
+            disabled={isAssigning}
+          >
+            <option value="">Select agent to assign...</option>
+            {agents.map(agent => (
+              <option key={agent.id} value={agent.id}>
+                {agent.name ? `${agent.name} (${agent.email})` : agent.email}
+              </option>
+            ))}
+          </select>
+          <button
+            className={`px-4 py-2 rounded ${bulkAssignAgent && !isAssigning ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+            onClick={handleBulkAssign}
+            disabled={!bulkAssignAgent || isAssigning}
+          >
+            {isAssigning ? 'Assigning...' : 'Assign'}
+          </button>
+          <button
+            className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-100"
+            onClick={() => setSelectedLeads([])}
+            disabled={isAssigning}
+          >
+            Clear Selection
+          </button>
+        </div>
+      )}
+      
       <div className="flex flex-wrap gap-4 mb-4 items-center">
         <input
           type="text"
@@ -243,6 +348,14 @@ export default function LeadTable({ leads, agents, stages, userRole, onSelectLea
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
+              <th className="px-4 py-2 text-center">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={filteredLeads.length > 0 && selectedLeads.length === filteredLeads.length}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th className="px-4 py-2 text-left">School Name</th>
               <th className="px-4 py-2 text-left">Name</th>
               <th className="px-4 py-2 text-left">Phone</th>
@@ -264,9 +377,10 @@ export default function LeadTable({ leads, agents, stages, userRole, onSelectLea
               filteredLeads.map(lead => (
                 <tr
                   key={lead.id}
-                  className="hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors cursor-pointer group"
+                  className={`hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors cursor-pointer group ${selectedLeads.includes(lead.id) ? 'bg-blue-50 dark:bg-blue-800' : ''}`}
                   onClick={e => {
-                    if ((e.target as HTMLElement).closest('button')) return;
+                    // Don't trigger row click if clicking on checkbox or button
+                    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input[type="checkbox"]')) return;
                     if (onSelectLead) {
                       onSelectLead(lead.id);
                     } else {
@@ -274,6 +388,15 @@ export default function LeadTable({ leads, agents, stages, userRole, onSelectLea
                     }
                   }}
                 >
+                  <td className="border px-4 py-2 text-center" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={selectedLeads.includes(lead.id)}
+                      onChange={(e) => toggleLeadSelection(e, lead.id)}
+                      onClick={e => e.stopPropagation()}
+                    />
+                  </td>
                   <td className="border px-4 py-2 group-hover:font-semibold">{lead.schoolName}</td>
                   <td className="border px-4 py-2 group-hover:font-semibold">{lead.name}</td>
                   <td className="border px-4 py-2 group-hover:font-semibold">{lead.phone}</td>

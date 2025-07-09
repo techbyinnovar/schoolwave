@@ -74,7 +74,7 @@ export const authConfig: NextAuthConfig = {
   ],
   callbacks: {
     async jwt({ token, user }: { token: NextAuthJWT; user?: NextAuthUser | AuthorizedUser; /* ... */ }) { /* ... as before ... */
-      console.log("JWT_CALLBACK: Processing JWT. User object present on first call:", !!user);
+      // console.log("JWT_CALLBACK: Processing JWT. User object present on first call:", !!user);
       try {
         if (user) {
           const authorizedUser = user as AuthorizedUser;
@@ -82,16 +82,16 @@ export const authConfig: NextAuthConfig = {
           token.role = authorizedUser.role;
           token.email = authorizedUser.email;
           token.name = authorizedUser.name;
-          console.log("JWT_CALLBACK: User object processed, token updated:", { id: token.id, role: token.role, email: token.email });
+          // console.log("JWT_CALLBACK: User object processed, token updated:", { id: token.id, role: token.role, email: token.email });
         }
         return token;
       } catch (error) {
-        console.error("JWT_CALLBACK: Error processing JWT:", error);
+        // console.error("JWT_CALLBACK: Error processing JWT:", error);
         return token;
       }
     },
     async session({ session, token }: { session: NextAuthSession; token: NextAuthJWT; }) {
-      console.log("SESSION_CALLBACK: Processing session. Token received:", { id: token.id, role: token.role, email: token.email });
+      // console.log("SESSION_CALLBACK: Processing session. Token received:", { id: token.id, role: token.role, email: token.email });
       try {
         session.user = {
           ...session.user, // Spread existing session.user properties (like name, email, image from DefaultSession)
@@ -101,10 +101,10 @@ export const authConfig: NextAuthConfig = {
         if (token.email) session.user.email = token.email as string;
         if (token.name) session.user.name = token.name as string | null;
 
-        console.log("SESSION_CALLBACK: Session user object updated:", session.user);
+        // console.log("SESSION_CALLBACK: Session user object updated:", session.user);
         return session; // Allow TS to infer the augmented Session type
       } catch (error) {
-        console.error("SESSION_CALLBACK: Error processing session:", error);
+        // console.error("SESSION_CALLBACK: Error processing session:", error);
         return session; // Return original session on error
       }
     },
