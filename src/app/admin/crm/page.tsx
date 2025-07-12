@@ -23,7 +23,8 @@ export type Lead = {
   agent?: { id: string; name?: string | null; email: string } | null;
   ownedById?: string | null;
   ownedBy?: { id: string; name?: string | null; email: string | null } | null;
-  stage?: string | { name: string };
+  stage?: string | { id: string; name: string };
+  stageId?: string; // Added stageId property
   lastDisposition?: string | null;
 };
 
@@ -750,7 +751,7 @@ function AdminCrmPageInner() {
     updatedKanban[destStage] = [...updatedKanban[destStage]];
     const [removed] = updatedKanban[sourceStage].splice(source.index, 1);
     if (removed) {
-      removed.stage = { name: destStageObj.name }; // ensure UI reflects new stage
+      removed.stage = { id: destStageObj.id, name: destStageObj.name }; // ensure UI reflects new stage
       updatedKanban[destStage].splice(destination.index, 0, removed);
       setKanbanLeads(updatedKanban);
     }
