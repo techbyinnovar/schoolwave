@@ -11,14 +11,42 @@ export async function GET() {
 
 // POST: /api/stage
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { name, color } = body;
-  if (!name) return NextResponse.json({ error: 'Missing name' }, { status: 400 });
-  // Determine next order value
-  const maxOrder = await prisma.stage.aggregate({ _max: { order: true } });
-  const order = (maxOrder._max.order ?? 0) + 1;
-  const stage = await prisma.stage.create({ data: { id: uuidv4(), name, color, order } });
-  return NextResponse.json({ stage });
+  try {
+    const body = await req.json();
+    const { name, color } = body;
+    
+    if (!name) {
+      return NextResponse.json({ error: 'Missing name' }, { status: 400 });
+    }
+    
+    // Check if a stage with the same name already exists
+    const existingStage = await prisma.stage.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } }
+    });
+    
+    if (existingStage) {
+      return NextResponse.json(
+        { error: `A stage with the name "${name}" already exists` },
+        { status: 409 }
+      );
+    }
+    
+    // Determine next order value
+    const maxOrder = await prisma.stage.aggregate({ _max: { order: true } });
+    const order = (maxOrder._max.order ?? 0) + 1;
+    
+    const stage = await prisma.stage.create({ 
+      data: { id: uuidv4(), name, color, order } 
+    });
+    
+    return NextResponse.json({ stage });
+  } catch (error) {
+    console.error('Error creating stage:', error);
+    return NextResponse.json(
+      { error: `Failed to create stage: ${(error as Error).message}` },
+      { status: 500 }
+    );
+  }
 }
 
 // PATCH: /api/stage
@@ -42,20 +70,43 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json();
     const { id, reassignToId } = body;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    if (!reassignToId) return NextResponse.json({ error: 'Missing reassignToId' }, { status: 400 });
-    if (id === reassignToId) return NextResponse.json({ error: 'Cannot reassign to the same stage' }, { status: 400 });
-
-    // Check both stages exist
+    
+    // Check if stage exists
     const stageToDelete = await prisma.stage.findUnique({ where: { id } });
-    const stageToReassign = await prisma.stage.findUnique({ where: { id: reassignToId } });
-    if (!stageToDelete) return NextResponse.json({ error: 'Stage to delete not found' }, { status: 404 });
-    if (!stageToReassign) return NextResponse.json({ error: 'Reassign-to stage not found' }, { status: 404 });
-
-    // Reassign leads
-    await prisma.lead.updateMany({ where: { stageId: id }, data: { stageId: reassignToId } });
-    // Delete the stage
-    await prisma.stage.delete({ where: { id } });
-    return NextResponse.json({ result: 'Stage deleted and leads reassigned' });
+    if (!stageToDelete) return NextResponse.json({ error: 'Stage not found' }, { status: 404 });
+    
+    // Check if stage has leads
+    const leadCount = await prisma.lead.count({ where: { stageId: id } });
+    
+    // If stage has leads, require reassignToId
+    if (leadCount > 0) {
+      if (!reassignToId) {
+        return NextResponse.json({ 
+          error: 'This stage has leads. Please provide reassignToId to move leads before deletion.', 
+          hasLeads: true,
+          leadCount
+        }, { status: 400 });
+      }
+      
+      if (id === reassignToId) {
+        return NextResponse.json({ error: 'Cannot reassign to the same stage' }, { status: 400 });
+      }
+      
+      // Check reassign stage exists
+      const stageToReassign = await prisma.stage.findUnique({ where: { id: reassignToId } });
+      if (!stageToReassign) {
+        return NextResponse.json({ error: 'Reassign-to stage not found' }, { status: 404 });
+      }
+      
+      // Reassign leads
+      await prisma.lead.updateMany({ where: { stageId: id }, data: { stageId: reassignToId } });
+      await prisma.stage.delete({ where: { id } });
+      return NextResponse.json({ result: 'Stage deleted and leads reassigned' });
+    } else {
+      // No leads, can delete directly
+      await prisma.stage.delete({ where: { id } });
+      return NextResponse.json({ result: 'Stage deleted successfully' });
+    }
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }

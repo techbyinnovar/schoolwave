@@ -90,7 +90,9 @@ function AdminCrmPageInner() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
 
-  const [tab, setTab] = useState<'leads' | 'stages'>('leads');
+  // Initialize tab state from URL or default to 'leads'
+  const initialTab = searchParams?.get('view') as 'leads' | 'stages' || 'leads';
+  const [tab, setTab] = useState<'leads' | 'stages'>(initialTab);
   const [leads, setLeads] = useState<Lead[]>([]);
 
 
@@ -107,6 +109,12 @@ function AdminCrmPageInner() {
       setDispositionFilter(params.get('disposition') || "");
       setDueTodayFilter(params.get('dueToday') === 'true');
       setDueWeekFilter(params.get('dueWeek') === 'true');
+      
+      // Update tab state from URL
+      const viewParam = params.get('view') as 'leads' | 'stages';
+      if (viewParam && (viewParam === 'leads' || viewParam === 'stages')) {
+        setTab(viewParam);
+      }
       
       // Check for lead parameter
       const leadId = params.get('lead');
@@ -515,11 +523,20 @@ function AdminCrmPageInner() {
     if (!stages.length) return;
     const grouped: Record<string, Lead[]> = {};
     stages.forEach(stage => {
-      grouped[stage.name] = [];
+      grouped[stage.id] = [];
     });
     visibleLeads.forEach(lead => {
-      const stageName = lead.stage ? getStageName(lead.stage) : stages[0]?.name;
-      if (grouped[stageName]) grouped[stageName].push(lead);
+      // Get the stage ID from the lead
+      const stageId = typeof lead.stage === 'object' && lead.stage ? lead.stage.id : lead.stageId;
+      // If we have a valid stage ID and it exists in our grouped object
+      if (stageId && grouped[stageId]) {
+        grouped[stageId].push(lead);
+      } else {
+        // Fallback to the first stage if no valid stage is found
+        if (stages.length > 0) {
+          grouped[stages[0].id].push(lead);
+        }
+      }
     });
     setKanbanLeads(grouped);
   }, [visibleLeads, stages]);
@@ -845,14 +862,14 @@ function AdminCrmPageInner() {
     }
     setLoading(true);
     try {
-      const url = editingStage.id ? "/api/stage" : "/api/stage";
+      const url = "/api/stage";
       // Only send fields that are present
       const payload = {
         ...editingStage,
         defaultTemplateId: editingStage.defaultTemplateId || null,
       };
       const res = await fetch(url, {
-        method: "POST",
+        method: editingStage.id ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -927,8 +944,32 @@ function AdminCrmPageInner() {
         <div className="w-full max-w-7xl">
           <h1 className="text-3xl font-bold mb-8 text-blue-700">Lead Management</h1>
           <div className="flex gap-4 mb-6">
-            <button className={`px-4 py-2 rounded font-semibold ${tab === 'leads' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`} onClick={() => setTab('leads')}>Leads Table</button>
-            <button className={`px-4 py-2 rounded font-semibold ${tab === 'stages' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`} onClick={() => setTab('stages')}>Kanban Board</button>
+            <button 
+              className={`px-4 py-2 rounded font-semibold ${tab === 'leads' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`} 
+              onClick={() => {
+                setTab('leads');
+                // Update URL to reflect tab change
+                const params = new URLSearchParams(window.location.search);
+                params.set('view', 'leads');
+                const url = `${pathname}?${params.toString()}`;
+                window.history.pushState({}, '', url);
+              }}
+            >
+              Leads Table
+            </button>
+            <button 
+              className={`px-4 py-2 rounded font-semibold ${tab === 'stages' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`} 
+              onClick={() => {
+                setTab('stages');
+                // Update URL to reflect tab change
+                const params = new URLSearchParams(window.location.search);
+                params.set('view', 'stages');
+                const url = `${pathname}?${params.toString()}`;
+                window.history.pushState({}, '', url);
+              }}
+            >
+              Kanban Board
+            </button>
           </div>
           {tab === "leads" && (
             <>
@@ -1072,6 +1113,11 @@ function AdminCrmPageInner() {
                             {...provided.droppableProps}
                             className={`flex-1 min-w-[240px] bg-blue-50 rounded-lg p-3 shadow ${snapshot.isDraggingOver ? 'bg-blue-100' : ''}`}
                           >
+                            {/* Color bar at the top of the column */}
+                            <div 
+                              className="h-2 rounded-t-md -mt-3 -mx-3 mb-3"
+                              style={{ backgroundColor: stage.color || '#3b82f6' }}
+                            ></div>
                             <div className="font-bold text-blue-700 mb-2 text-center flex items-center justify-center gap-2">
                               <span>{stage.name}</span>
                               {userRole !== "AGENT" && (
@@ -1080,7 +1126,7 @@ function AdminCrmPageInner() {
                                 </button>
                               )}
                             </div>
-                            {(kanbanLeads[stage.name] || []).map((lead, idx) => (
+                            {(kanbanLeads[stage.id] || []).map((lead, idx) => (
                               <Draggable draggableId={lead.id} index={idx} key={lead.id}>
                                 {(provided, snapshot) => (
                                   <div

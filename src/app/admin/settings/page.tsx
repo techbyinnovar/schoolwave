@@ -60,6 +60,9 @@ export default function AdminSettingsPage() {
   const [addonForm, setAddonForm] = useState<Partial<Addon>>({});
   const [editingAddonId, setEditingAddonId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'academic' | 'addons' | 'stages' | 'actions' | 'dispositions' | 'defaults' | 'plans' | 'stageTemplates'>("academic");
+  const [editingStage, setEditingStage] = useState<{ id?: string; name: string }>({ name: "" });
+  const [stageModalOpen, setStageModalOpen] = useState(false);
+  const [stageFormError, setStageFormError] = useState("");
   const [stageTemplateMap, setStageTemplateMap] = useState<Record<string, string>>(/* stageId: templateId */{});
   const [savingStageTemplates, setSavingStageTemplates] = useState(false);
 
@@ -497,10 +500,149 @@ export default function AdminSettingsPage() {
                   Add Stage
                 </button>
               </form>
+              
+              {/* Edit Stage Modal */}
+              {stageModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                    <h3 className="text-lg font-bold mb-4">Edit Stage</h3>
+                    {stageFormError && (
+                      <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{stageFormError}</div>
+                    )}
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!editingStage.name.trim()) {
+                          setStageFormError("Stage name is required");
+                          return;
+                        }
+                        try {
+                          const res = await fetch("/api/stage", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              id: editingStage.id,
+                              name: editingStage.name
+                            }),
+                          });
+                          if (res.ok) {
+                            setStageModalOpen(false);
+                            fetchData();
+                          } else {
+                            const errorData = await res.json();
+                            setStageFormError(errorData.error || "Failed to update stage");
+                          }
+                        } catch (error) {
+                          setStageFormError("An unexpected error occurred");
+                        }
+                      }}
+                    >
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1">Stage Name</label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-3 py-2"
+                          value={editingStage.name}
+                          onChange={(e) => setEditingStage({ ...editingStage, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          className="px-4 py-2 bg-gray-300 rounded"
+                          onClick={() => setStageModalOpen(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-blue-600 text-white rounded"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+              
               <ul className="divide-y">
                 {stages.map((stage) => (
                   <li key={stage.id} className="py-2 flex items-center justify-between">
                     <span>{stage.name}</span>
+                    <div className="flex gap-2">
+                      <button
+                        className="text-blue-600 hover:underline text-sm"
+                        onClick={() => {
+                          setEditingStage({ id: stage.id, name: stage.name });
+                          setStageModalOpen(true);
+                          setStageFormError("");
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="text-red-600 hover:underline text-sm"
+                        onClick={async () => {
+                          // First check if stage has any leads
+                          const checkRes = await fetch(`/api/stage/${stage.id}/check-leads`);
+                          const checkData = await checkRes.json();
+                          
+                          if (checkData.hasLeads) {
+                            Swal.fire({
+                              icon: "error",
+                              title: "Cannot Delete Stage",
+                              text: "This stage contains leads. Please move or delete the leads first."
+                            });
+                            return;
+                          }
+                          
+                          // If no leads, confirm deletion
+                          const confirmed = await Swal.fire({
+                            title: "Are you sure?",
+                            text: "This will delete the stage permanently.",
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonText: "Yes, delete it!"
+                          });
+                          
+                          if (confirmed.isConfirmed) {
+                            try {
+                              const res = await fetch(`/api/stage`, {
+                                method: "DELETE",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ id: stage.id })
+                              });
+                              
+                              if (res.ok) {
+                                fetchData();
+                                Swal.fire({
+                                  icon: "success",
+                                  title: "Stage Deleted",
+                                  text: "The stage has been successfully deleted."
+                                });
+                              } else {
+                                const errorData = await res.json();
+                                Swal.fire({
+                                  icon: "error",
+                                  title: "Error",
+                                  text: errorData.error || "Failed to delete stage."
+                                });
+                              }
+                            } catch (error) {
+                              Swal.fire({
+                                icon: "error",
+                                title: "Error",
+                                text: "An unexpected error occurred."
+                              });
+                            }
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
