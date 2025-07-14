@@ -1013,6 +1013,7 @@ function AdminCrmPageInner() {
           {tab === 'stages' && (
             <div className="overflow-x-auto">
               <div className="flex flex-wrap gap-4 mb-4 items-center">
+                {/* Search input - only for agents */}
                 {userRole === "AGENT" && (
                   <>
                     <input
@@ -1032,18 +1033,28 @@ function AdminCrmPageInner() {
                         <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
                       ))}
                     </select>
-                    <select
-                      className="border rounded px-3 py-2"
-                      value={assignedFilter}
-                      onChange={e => setAssignedFilter(e.target.value)}
-                    >
-                      <option value="">All Assigned</option>
-                      {agents.map(agent => (
-                        <option key={agent.id} value={agent.id}>{agent.name ? `${agent.name} (${agent.email})` : agent.email}</option>
-                      ))}
-                    </select>
                   </>
                 )}
+                
+                {/* Agent filter - available for all users */}
+                <div className="mb-2">
+                  <label className="block mb-1 text-sm font-medium">By Agent:</label>
+                  <select
+                    className="p-2 border rounded w-full"
+                    value={assignedFilter}
+                    onChange={(e) => {
+                      setAssignedFilter(e.target.value);
+                      updateUrlWithFilters({ assigned: e.target.value });
+                    }}
+                  >
+                    <option value="">All Agents</option>
+                    {agents.map(agent => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name ? `${agent.name} (${agent.email})` : agent.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <select
                   className="border rounded px-3 py-2"
                   value={stageFilter}

@@ -38,8 +38,30 @@ BEGIN
   END IF;
 END $$;
 
--- Add foreign keys
-ALTER TABLE "EntityHistory" ADD CONSTRAINT "EntityHistory_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "EntityHistory" ADD CONSTRAINT "EntityHistory_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "EntityHistory" ADD CONSTRAINT "EntityHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "Note" ADD CONSTRAINT "Note_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Add foreign keys if they don't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'EntityHistory_leadId_fkey'
+  ) THEN
+    ALTER TABLE "EntityHistory" ADD CONSTRAINT "EntityHistory_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'EntityHistory_customerId_fkey'
+  ) THEN
+    ALTER TABLE "EntityHistory" ADD CONSTRAINT "EntityHistory_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'EntityHistory_userId_fkey'
+  ) THEN
+    ALTER TABLE "EntityHistory" ADD CONSTRAINT "EntityHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'Note_customerId_fkey'
+  ) THEN
+    ALTER TABLE "Note" ADD CONSTRAINT "Note_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
