@@ -17,18 +17,42 @@ export async function POST(
   if (!type || !actionType) {
     return NextResponse.json({ error: 'Missing type or actionType' }, { status: 400 });
   }
-  const history = await prisma.entityHistory.create({
-    data: {
-      id: uuidv4(),
-      leadId: id,
-      type,
-      actionType,
-      note: note || null,
-      disposition: disposition || null,  // Include disposition if provided
-      userId,
-      entityType: 'lead', // Set the entityType to 'lead' since this is for a lead
-    },
-    include: { User: true },
-  });
-  return NextResponse.json({ result: { data: history } });
+  
+  // Start a transaction to ensure both operations succeed or fail together
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the entity history record
+      const history = await tx.entityHistory.create({
+        data: {
+          id: uuidv4(),
+          leadId: id,
+          type,
+          actionType,
+          note: note || null,
+          disposition: disposition || null,  // Include disposition if provided
+          userId,
+          entityType: 'lead', // Set the entityType to 'lead' since this is for a lead
+        },
+        include: { User: true },
+      });
+      
+      // Update the lead's last active date
+      const now = new Date();
+      await tx.lead.update({
+        where: { id },
+        data: {
+          updatedAt: now, // Update the standard updatedAt field
+          // If disposition is provided, update the last disposition as well
+          ...(disposition ? { lastDisposition: disposition } : {})
+        }
+      });
+      
+      return history;
+    });
+    
+    return NextResponse.json({ result: { data: result } });
+  } catch (error: any) {
+    console.error('Error logging lead action:', error);
+    return NextResponse.json({ error: error.message || 'Failed to log action' }, { status: 500 });
+  }
 }

@@ -7,6 +7,11 @@ const nextConfig = {
     ignoreDuringBuilds: true,
     dirs: ['app', 'components', 'pages', 'lib', 'src']
   },
+  // Use correct configuration for dynamic routes
+  experimental: {
+    // Correctly configure dynamic routes
+    outputStandalone: true,
+  },
   images: {
     remotePatterns: [
       {

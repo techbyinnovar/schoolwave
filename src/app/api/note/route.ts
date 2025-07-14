@@ -30,23 +30,44 @@ export async function POST(req: NextRequest) {
     // Only set userId if it is a valid, non-empty string
     const normalizedUserId = userId && typeof userId === 'string' && userId.trim().length > 0 ? userId : null;
     
-    // Create the complete data object for the note
-    const note = await prisma.note.create({
-      data: {
-        id: randomUUID(),
-        content,
-        entityType,
-        // Only set one of leadId or customerId based on entityType
-        ...(entityType === 'customer' ? { customerId } : {}),
-        ...(entityType === 'lead' ? { leadId } : {}),
-        // Add user if available
-        ...(normalizedUserId ? { userId: normalizedUserId } : {})
-      } as any, // Use type assertion since schema may be ahead of generated types
-      include: { User: true },
-    });
-    
-    console.log('[NOTE CREATE] Created:', note);
-    return NextResponse.json({ note });
+    try {
+      // Use a transaction to ensure both operations succeed or fail together
+      const result = await prisma.$transaction(async (tx) => {
+        // Create the note
+        const note = await tx.note.create({
+          data: {
+            id: randomUUID(),
+            content,
+            entityType,
+            // Only set one of leadId or customerId based on entityType
+            ...(entityType === 'customer' ? { customerId } : {}),
+            ...(entityType === 'lead' ? { leadId } : {}),
+            // Add user if available
+            ...(normalizedUserId ? { userId: normalizedUserId } : {})
+          } as any, // Use type assertion since schema may be ahead of generated types
+          include: { User: true },
+        });
+        
+        // If this is a lead note, update the lead's last active date
+        if (entityType === 'lead' && leadId) {
+          const now = new Date();
+          await tx.lead.update({
+            where: { id: leadId },
+            data: {
+              updatedAt: now // Update the standard updatedAt field
+            }
+          });
+        }
+        
+        return note;
+      });
+      
+      console.log('[NOTE CREATE] Created:', result);
+      return NextResponse.json({ note: result });
+    } catch (error: any) {
+      console.error('[NOTE CREATE] Error:', error);
+      return NextResponse.json({ error: error.message || 'Failed to create note' }, { status: 500 });
+    }
   }
 }
 

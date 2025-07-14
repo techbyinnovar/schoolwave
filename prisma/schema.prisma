@@ -88,6 +88,8 @@ model Lead {
   stageId               String?
   createdAt             DateTime                @default(now())
   updatedAt             DateTime
+  lastActiveDate        DateTime?               // Track when an agent last interacted with this lead
+  lastDisposition       String?                 // Track the last disposition set for this lead
   demoCode              String?                 @unique
   demoLog               Json?
   howHeard              String?

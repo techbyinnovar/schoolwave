@@ -6,6 +6,7 @@ const allowedRoles = ['ADMIN', 'CONTENT_ADMIN'];
 
 import { z } from 'zod';
 import slugify from 'slugify';
+import { v4 as uuidv4 } from 'uuid';
 
 // Zod schema for facilitator
 const facilitatorSchema = z.object({
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
 
     // Explicit type for webinarData to avoid Prisma type dependency
     const webinarData = {
+      id: uuidv4(), // Generate a UUID for the webinar ID
       ...restData,
       title,
       slug,
@@ -77,6 +79,8 @@ export async function POST(req: NextRequest) {
       authorId: session.user.id,
       price: restData.isFree ? null : (restData.price ?? null),
       facilitators: restData.facilitators || [], // Ensure facilitators is an array
+      createdAt: new Date(), // Set creation date
+      updatedAt: new Date(), // Set update date
     };
 
     const newWebinar = await prisma.webinars.create({

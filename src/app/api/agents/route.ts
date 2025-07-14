@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from "@/lib/db";
 import { auth } from '@/auth';
 
-export const runtime = "nodejs";
+// Mark this route as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
 
 // GET /api/agents - Get all agents (users with AGENT role)
 export async function GET(req: NextRequest) {

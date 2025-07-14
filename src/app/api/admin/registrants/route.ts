@@ -6,7 +6,8 @@ import { Role } from '@prisma/client';
 // Define allowed roles as a plain string array for consistency with other routes
 const allowedRoles = ['ADMIN', 'CONTENT_ADMIN'];
 
-export const runtime = 'nodejs'; // Ensure Node.js runtime for database operations
+// Mark this route as dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   console.log('[API] Registrants API route called');
