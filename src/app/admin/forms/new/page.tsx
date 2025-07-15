@@ -39,6 +39,7 @@ export default function NewFormPage() {
   }
   const [stageId, setStageId] = useState('');
   const [published, setPublished] = useState(false);
+  const [allowMultipleSubmissions, setAllowMultipleSubmissions] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -47,10 +48,23 @@ export default function NewFormPage() {
     setLoading(true);
     setError('');
     try {
+      // Create a fields object that includes the allowMultipleSubmissions setting
+      const fieldsWithSettings = {
+        ...fields,
+        allowMultipleSubmissions: allowMultipleSubmissions
+      };
+      
       const res = await fetch('/api/forms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, fields, stageId, published, bannerImage }),
+        body: JSON.stringify({ 
+          name, 
+          description, 
+          fields: fieldsWithSettings, 
+          stageId, 
+          published, 
+          bannerImage 
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to create form');
       router.push('/admin/forms');
@@ -186,8 +200,27 @@ export default function NewFormPage() {
           <input className="input input-bordered w-full" value={stageId} onChange={e => setStageId(e.target.value)} />
         </div>
         <div className="flex items-center gap-2">
-          <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} id="published" />
-          <label htmlFor="published">Published</label>
+          <input
+            type="checkbox"
+            className="checkbox"
+            checked={published}
+            onChange={e => setPublished(e.target.checked)}
+          />
+          <label>Publish form</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="checkbox"
+            checked={allowMultipleSubmissions}
+            onChange={e => setAllowMultipleSubmissions(e.target.checked)}
+          />
+          <label>Allow multiple submissions from the same lead</label>
+          <div className="tooltip" data-tip="If checked, the same lead can submit this form multiple times. If unchecked, leads can only submit this form once.">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
         </div>
         {error && <div className="text-red-600">{error}</div>}
         <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create Form'}</button>

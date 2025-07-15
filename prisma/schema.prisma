@@ -39,17 +39,18 @@ model Demo {
 }
 
 model Form {
-  id           String         @id
-  name         String
-  description  String?
-  fields       Json
-  stageId      String?
-  published    Boolean        @default(false)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
-  bannerImage  String?
-  Stage        Stage?         @relation(fields: [stageId], references: [id])
-  FormResponse FormResponse[]
+  id                      String         @id
+  name                    String
+  description             String?
+  fields                  Json
+  stageId                 String?
+  published               Boolean        @default(false)
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime
+  bannerImage             String?
+  allowMultipleSubmissions Boolean        @default(false)
+  Stage                   Stage?         @relation(fields: [stageId], references: [id])
+  FormResponse            FormResponse[]
 }
 
 model FormResponse {

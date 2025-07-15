@@ -13,7 +13,8 @@ export default function FormResponsesPage() {
       .then(res => res.json())
       .then(data => {
         setForm(data);
-        setResponses(data.responses || []);
+        // Fix: Access FormResponse instead of responses
+        setResponses(data.FormResponse || []);
         setLoading(false);
       });
   }, [id]);
@@ -47,8 +48,12 @@ export default function FormResponsesPage() {
               <tr key={r.id} className="even:bg-gray-50 cursor-pointer hover:bg-indigo-50" onClick={() => setSelectedResponse(r)}>
                 <td className="border px-4 py-2 text-xs">{new Date(r.createdAt).toLocaleString()}</td>
                 {requiredFields.map((field: any) => {
-                  let value = r.lead?.[field.name];
-                  if (value === undefined || value === null || value === '') {
+                  // Try to get standard fields directly from the lead object
+                  let value;
+                  if (field.name === 'name' || field.name === 'email' || field.name === 'phone' || field.name === 'schoolName') {
+                    value = r.Lead?.[field.name];
+                  } else {
+                    // For other fields, check the response JSON object
                     value = r.response?.[field.name];
                   }
                   if (typeof value === 'object' && value !== null) value = JSON.stringify(value);
@@ -71,18 +76,22 @@ export default function FormResponsesPage() {
               <div className="mb-4 text-xs text-gray-500">Submitted: {new Date(selectedResponse.createdAt).toLocaleString()}</div>
               <table className="w-full text-sm mb-2">
                 <tbody>
-                  {form.fields.map((field: any) => (
-                    <tr key={field.name}>
-                      <td className="font-semibold pr-2 align-top w-1/3">{field.label || field.name}</td>
-                      <td className="break-all">
-                        {(selectedResponse.lead && selectedResponse.lead[field.name])
-                          ? selectedResponse.lead[field.name]
-                          : (typeof selectedResponse.response?.[field.name] === 'object' && selectedResponse.response?.[field.name] !== null
-                              ? JSON.stringify(selectedResponse.response[field.name])
-                              : selectedResponse.response?.[field.name] ?? '-')}
-                      </td>
-                    </tr>
-                  ))}
+                  {form.fields.map((field: any) => {
+                    let value;
+                    if (field.name === 'name' || field.name === 'email' || field.name === 'phone' || field.name === 'schoolName') {
+                      value = selectedResponse.Lead?.[field.name];
+                    } else {
+                      value = selectedResponse.response?.[field.name];
+                    }
+                    if (typeof value === 'object' && value !== null) value = JSON.stringify(value);
+                    if (value === undefined || value === null || value === '') value = '-';
+                    return (
+                      <tr key={field.name}>
+                        <td className="font-semibold pr-2 align-top w-1/3">{field.label || field.name}</td>
+                        <td className="break-all">{value}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {/* Debug: raw responseData */}

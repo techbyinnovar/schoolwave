@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from "@/lib/db";
+import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = "nodejs";
 import { sendTemplateToLead } from "@/app/api/lead/sendTemplateToLead";
@@ -69,6 +70,54 @@ export async function PATCH(
   }
 
   try {
+    // Check for duplicate phone if phone is being updated
+    if (filteredUpdate.phone) {
+      const existingLeadWithPhone = await prisma.lead.findFirst({
+        where: {
+          phone: filteredUpdate.phone,
+          id: { not: id } // Exclude current lead
+        }
+      });
+      
+      if (existingLeadWithPhone) {
+        // Instead of returning an error, we'll transfer form responses from current lead to existing lead
+        // and then redirect to the existing lead
+        
+        // 1. Get all form responses for the current lead
+        const formResponses = await prisma.formResponse.findMany({
+          where: { leadId: id }
+        });
+        
+        // 2. Update all form responses to point to the existing lead
+        if (formResponses.length > 0) {
+          await Promise.all(formResponses.map(response => 
+            prisma.formResponse.update({
+              where: { id: response.id },
+              data: { leadId: existingLeadWithPhone.id }
+            })
+          ));
+        }
+        
+        // 3. Create a note on the existing lead about the merge
+        await prisma.note.create({
+          data: {
+            id: uuidv4(),
+            leadId: existingLeadWithPhone.id,
+            content: `Lead with ID ${id} was merged into this lead due to duplicate phone number.`,
+            createdAt: new Date()
+          }
+        });
+        
+        // 4. Return the existing lead with a message about the merge
+        return NextResponse.json({ 
+          result: { 
+            data: existingLeadWithPhone,
+            message: `Found duplicate phone number. Form responses have been linked to the existing lead (ID: ${existingLeadWithPhone.id}).`
+          } 
+        });
+      }
+    }
+    
     const lead = await prisma.lead.update({
       where: { id },
       data: filteredUpdate,

@@ -12,6 +12,7 @@ export default function EditFormPage() {
   const [fields, setFields] = useState('');
   const [stageId, setStageId] = useState('');
   const [published, setPublished] = useState(false);
+  const [allowMultipleSubmissions, setAllowMultipleSubmissions] = useState(false);
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,16 @@ export default function EditFormPage() {
         setStageId(data.stageId || '');
         setPublished(!!data.published);
         setBannerImage(data.bannerImage || null);
+        
+        // Check if allowMultipleSubmissions is set in the form fields
+        try {
+          const fieldsObj = typeof data.fields === 'string' ? JSON.parse(data.fields) : data.fields;
+          setAllowMultipleSubmissions(!!fieldsObj.allowMultipleSubmissions);
+        } catch (e) {
+          // If there's an error parsing the fields, default to false
+          setAllowMultipleSubmissions(false);
+        }
+        
         setLoading(false);
       });
   }, [id]);
@@ -35,10 +46,21 @@ export default function EditFormPage() {
     e.preventDefault();
     setError('');
     try {
+      // Parse the fields JSON and add the allowMultipleSubmissions setting
+      let fieldsObj;
+      try {
+        fieldsObj = JSON.parse(fields);
+      } catch (e) {
+        throw new Error('Invalid JSON in fields');
+      }
+      
+      // Add allowMultipleSubmissions to the fields object
+      fieldsObj.allowMultipleSubmissions = allowMultipleSubmissions;
+      
       const res = await fetch(`/api/forms/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, fields: JSON.parse(fields), stageId, published, bannerImage }),
+        body: JSON.stringify({ name, description, fields: fieldsObj, stageId, published, bannerImage }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to update form');
       router.push(`/admin/forms/${id}`);
@@ -75,6 +97,22 @@ export default function EditFormPage() {
         <div className="flex items-center gap-2">
           <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} id="published" />
           <label htmlFor="published">Published</label>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            className="checkbox"
+            checked={allowMultipleSubmissions} 
+            onChange={e => setAllowMultipleSubmissions(e.target.checked)} 
+            id="allowMultipleSubmissions" 
+          />
+          <label htmlFor="allowMultipleSubmissions">Allow multiple submissions from the same lead</label>
+          <div className="tooltip" data-tip="If checked, the same lead can submit this form multiple times. If unchecked, leads can only submit this form once.">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
         </div>
         {error && <div className="text-red-600">{error}</div>}
         <button className="btn btn-primary" type="submit">Save Changes</button>

@@ -45,14 +45,28 @@ export async function POST(req: NextRequest) {
     const { name, phone, email, schoolName, numberOfStudents, howHeard } = validation.data;
     validatedEmailForCatch = email; // Capture email for use in catch block
 
-    // Check if email already exists
+    // Check if lead already exists by email or phone
     const existingLeadByEmail = await prisma.lead.findFirst({
       where: { email },
     });
 
+    // If lead exists by email, return the existing lead's demo code
     if (existingLeadByEmail) {
       return NextResponse.json(
         { message: 'A lead with this email already exists. Your demo code is: ' + existingLeadByEmail.demoCode, demoCode: existingLeadByEmail.demoCode }, 
+        { status: 409 } // Conflict
+      );
+    }
+    
+    // Check if lead exists by phone
+    const existingLeadByPhone = await prisma.lead.findFirst({
+      where: { phone },
+    });
+    
+    // If lead exists by phone, return the existing lead's demo code
+    if (existingLeadByPhone) {
+      return NextResponse.json(
+        { message: 'A lead with this phone number already exists. Your demo code is: ' + existingLeadByPhone.demoCode, demoCode: existingLeadByPhone.demoCode }, 
         { status: 409 } // Conflict
       );
     }
