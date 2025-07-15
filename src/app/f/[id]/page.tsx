@@ -6,13 +6,13 @@ import FileUploadField from '@/components/form/FileUploadField';
 function renderField(field: any, value: any, setValue: (v: any) => void) {
   switch (field.type) {
     case 'email':
-      return <input type="email" className="input input-bordered w-full" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
+      return <input type="email" className="input input-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
     case 'text':
-      return <input type="text" className="input input-bordered w-full" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
+      return <input type="text" className="input input-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
     case 'textarea':
-      return <textarea className="textarea textarea-bordered w-full" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
+      return <textarea className="textarea textarea-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
     case 'number':
-      return <input type="number" className="input input-bordered w-full" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
+      return <input type="number" className="input input-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
     case 'fileUpload':
       return (
         <FileUploadField
@@ -26,7 +26,7 @@ function renderField(field: any, value: any, setValue: (v: any) => void) {
         />
       );
     default:
-      return <input type="text" className="input input-bordered w-full" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
+      return <input type="text" className="input input-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
   }
 }
 
@@ -88,9 +88,9 @@ export default function PublicFormPage() {
     }
   }
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (!form || !form.published) return <div className="p-8 text-red-600">Form not found or not published</div>;
-  if (submitted) return <div className="max-w-lg mx-auto p-8 text-center text-green-700">Thank you! Your response has been submitted.</div>;
+  if (loading) return <div className="p-8 text-white dark:text-white">Loading...</div>;
+  if (!form || !form.published) return <div className="p-8 text-red-600 dark:text-red-400">Form not found or not published</div>;
+  if (submitted) return <div className="max-w-lg mx-auto p-8 text-center text-green-700 dark:text-green-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">Thank you! Your response has been submitted.</div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#00164E] bg-[url('/sch_elementwhite.png')] bg-contain bg-center">
@@ -103,16 +103,16 @@ export default function PublicFormPage() {
               className="w-full h-48 object-cover rounded-lg mb-6"
             />
           )}
-          <h1 className="text-3xl font-bold mb-2 text-center">{form?.name}</h1>
-          <p className="mb-6 text-center text-gray-600">{form?.description}</p>
+          <h1 className="text-3xl font-bold mb-2 text-center text-gray-900 dark:text-white">{form?.name}</h1>
+          <p className="mb-6 text-center text-gray-700 dark:text-gray-300">{form?.description}</p>
           <form className="space-y-4" onSubmit={handleSubmit}>
             {form?.fields?.map((field: any) => (
               <div key={field.name}>
-                <label className="block mb-1 font-semibold">{field.label || field.name}{field.required && <span className="text-red-500">*</span>}</label>
+                <label className="block mb-1 font-semibold text-gray-900 dark:text-white">{field.label || field.name}{field.required && <span className="text-red-500 dark:text-red-400">*</span>}</label>
                 {renderField(field, values[field.name], (v: any) => setFieldValue(field.name, v))}
               </div>
             ))}
-            {error && <div className="alert alert-error">{error}</div>}
+            {error && <div className="alert alert-error text-white dark:text-white">{error}</div>}
             <button type="submit" className="btn btn-primary w-full" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit'}</button>
           </form>
         </div>
