@@ -48,7 +48,6 @@ model Form {
   createdAt               DateTime       @default(now())
   updatedAt               DateTime
   bannerImage             String?
-  allowMultipleSubmissions Boolean        @default(false)
   Stage                   Stage?         @relation(fields: [stageId], references: [id])
   FormResponse            FormResponse[]
 }
