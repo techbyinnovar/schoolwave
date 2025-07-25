@@ -10,15 +10,15 @@ export async function GET(
   try {
     const { slug } = params;
     const session = await auth();
-
+    
     // Build query
     const where: any = { slug };
-
+    
     // For non-admin users, only return published pages
     if (!session || session.user.role !== "ADMIN") {
       where.published = true;
     }
-
+    
     const page = await prisma.page.findUnique({
       where,
       include: {
@@ -30,14 +30,14 @@ export async function GET(
         },
       },
     });
-
+    
     if (!page) {
       return NextResponse.json(
         { error: "Page not found" },
         { status: 404 }
       );
     }
-
+    
     return NextResponse.json(page);
   } catch (error) {
     console.error(`Error fetching page with slug ${params.slug}:`, error);
@@ -56,7 +56,7 @@ export async function PUT(
   try {
     const { slug } = params;
     const session = await auth();
-
+    
     // Check if user is authenticated and is an admin
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json(
@@ -64,36 +64,36 @@ export async function PUT(
         { status: 401 }
       );
     }
-
+    
     // Find the page
     const existingPage = await prisma.page.findUnique({
       where: { slug },
     });
-
+    
     if (!existingPage) {
       return NextResponse.json(
         { error: "Page not found" },
         { status: 404 }
       );
     }
-
+    
     const body = await request.json();
     const { title, content, description, published, newSlug } = body;
-
+    
     // Check if new slug is already taken
     if (newSlug && newSlug !== slug) {
-      const slugCheck = await prisma.page.findUnique({
+      const existingPageWithSlug = await prisma.page.findUnique({
         where: { slug: newSlug },
       });
-
-      if (slugCheck) {
+      
+      if (existingPageWithSlug) {
         return NextResponse.json(
           { error: "Slug already exists" },
           { status: 400 }
         );
       }
     }
-
+    
     // Update page
     const updatedPage = await prisma.page.update({
       where: { id: existingPage.id },
@@ -107,7 +107,7 @@ export async function PUT(
         updatedAt: new Date(),
       },
     });
-
+    
     return NextResponse.json(updatedPage);
   } catch (error) {
     console.error(`Error updating page with slug ${params.slug}:`, error);
@@ -126,7 +126,7 @@ export async function DELETE(
   try {
     const { slug } = params;
     const session = await auth();
-
+    
     // Check if user is authenticated and is an admin
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json(
@@ -134,24 +134,24 @@ export async function DELETE(
         { status: 401 }
       );
     }
-
+    
     // Find the page
     const existingPage = await prisma.page.findUnique({
       where: { slug },
     });
-
+    
     if (!existingPage) {
       return NextResponse.json(
         { error: "Page not found" },
         { status: 404 }
       );
     }
-
+    
     // Delete page
     await prisma.page.delete({
       where: { id: existingPage.id },
     });
-
+    
     return NextResponse.json(
       { message: "Page deleted successfully" },
       { status: 200 }
