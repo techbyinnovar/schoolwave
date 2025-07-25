@@ -140,6 +140,34 @@ export async function GET(request: NextRequest) {
         },
       });
       
+      // Count active leads (leads in the filtered stage)
+      const activeLeadsCount = await prisma.lead.count({
+        where: {
+          assignedUser: { id: agent.id },
+          ...(stageId ? { stageId } : {}),
+          ...(disposition ? { lastDisposition: disposition } : {}),
+          ...(startDate ? { updatedAt: { gte: startDate } } : {}),
+        },
+      });
+      
+      // Count scheduled tasks completed by this agent
+      const scheduledTasksCompleted = await prisma.tasks.count({
+        where: {
+          assignedToId: agent.id,
+          status: 'COMPLETED',
+          ...(startDate ? { updatedAt: { gte: startDate } } : {}),
+        },
+      });
+      
+      // Count outstanding tasks for this agent
+      const outstandingTasksCount = await prisma.tasks.count({
+        where: {
+          assignedToId: agent.id,
+          status: { in: ['PENDING', 'IN_PROGRESS'] },
+          ...(startDate ? { dueDate: { gte: startDate.toISOString() } } : {}),
+        },
+      });
+      
       // Count notes created by this agent
       const notesCount = await prisma.note.count({
         where: {
@@ -172,6 +200,9 @@ export async function GET(request: NextRequest) {
         email: agent.email,
         leadsCount,
         dispositionsCount,
+        activeLeadsCount,
+        scheduledTasksCompleted,
+        outstandingTasksCount,
         notesCount,
         actionsCount,
         stageTransitions,

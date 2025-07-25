@@ -20,10 +20,21 @@ type Lead = {
   ownedBy?: { id: string; name?: string | null; email: string | null } | null;
 };
 
+type Task = {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  assignedTo?: string;
+  leadId?: string;
+};
+
 type User = {
   id: string;
   name?: string | null;
   email: string;
+  role?: string;
 };
 
 type Stage = {
@@ -41,6 +52,9 @@ type AgentStats = {
   stageTransitions: number;
   notesCount: number;
   actionsCount: number;
+  activeLeadsCount: number;
+  scheduledTasksCompleted: number;
+  outstandingTasksCount: number;
 };
 
 // Create a client component that uses useSearchParams
@@ -144,18 +158,20 @@ function ActivityPageClient() {
           // Set leads from the activity data
           setLeads(data.result.data || []);
           
-          // Set agent stats
-          setAgentStats(data.result.agentStats || []);
+          // Initialize agent stats with data from API
+          const initialAgentStats = data.result.agentStats || [];
           
           // We still need to fetch stages and dispositions separately
           // as they're needed for the filter dropdowns
-          const [stagesRes, dispositionsRes] = await Promise.all([
+          const [stagesRes, dispositionsRes, tasksRes] = await Promise.all([
             fetch('/api/stage'),
-            fetch('/api/disposition')
+            fetch('/api/disposition'),
+            fetch(`/api/tasks?${params.toString()}`) // Fetch tasks with the same filters
           ]);
           
           const stagesData = await stagesRes.json();
           const dispositionsData = await dispositionsRes.json();
+          const tasksData = await tasksRes.json();
           
           if (stagesData.result?.data) {
             setStages(stagesData.result.data);
@@ -174,6 +190,90 @@ function ActivityPageClient() {
               user.id && (session?.user?.role === 'ADMIN' || user.id === session?.user?.id)
             ));
           }
+          
+          // Calculate additional metrics for agents
+          if (data.result.data && tasksData.result?.data && agents.length > 0) {
+            const leads = data.result.data;
+            const tasks = tasksData.result.data;
+            
+            // Create a map to store agent stats
+            const statsMap = new Map<string, AgentStats>();
+            
+            // Initialize stats for each agent, preserving existing stats from API
+            agents.forEach(agent => {
+              // Find existing stats for this agent if available
+              const existingStats = initialAgentStats.find((stat: any) => stat.id === agent.id);
+              
+              statsMap.set(agent.id, {
+                id: agent.id,
+                name: agent.name || agent.email,
+                email: agent.email,
+                leadsCount: existingStats?.leadsCount || 0,
+                dispositionsCount: existingStats?.dispositionsCount || 0,
+                stageTransitions: existingStats?.stageTransitions || 0,
+                notesCount: existingStats?.notesCount || 0,
+                actionsCount: existingStats?.actionsCount || 0,
+                activeLeadsCount: existingStats?.activeLeadsCount || 0,
+                scheduledTasksCompleted: existingStats?.scheduledTasksCompleted || 0,
+                outstandingTasksCount: existingStats?.outstandingTasksCount || 0
+              });
+            });
+            
+            // Count leads assigned to each agent
+            leads.forEach((lead: Lead) => {
+              if (lead.assignedUser?.id) {
+                const agentId = lead.assignedUser.id;
+                const agentStats = statsMap.get(agentId);
+                
+                if (agentStats) {
+                  // Increment lead count
+                  agentStats.leadsCount += 1;
+                  
+                  // Count disposition if present
+                  if (lead.lastDisposition) {
+                    agentStats.dispositionsCount += 1;
+                  }
+                  
+                  // Count active leads (leads in the filtered stage)
+                  const leadStageId = typeof lead.stage === 'object' && lead.stage ? lead.stage.id : lead.stageId;
+                  if ((!stageFilter || leadStageId === stageFilter) && 
+                      (!dispositionFilter || lead.lastDisposition === dispositionFilter)) {
+                    agentStats.activeLeadsCount += 1;
+                  }
+                }
+              }
+            });
+            
+            // Count tasks for each agent
+            tasks.forEach((task: Task) => {
+              if (task.assignedTo) {
+                const agentId = task.assignedTo;
+                const agentStats = statsMap.get(agentId);
+                
+                if (agentStats) {
+                  // Count completed tasks
+                  if (task.status === 'COMPLETED') {
+                    agentStats.scheduledTasksCompleted += 1;
+                  }
+                  // Count outstanding tasks
+                  else if (task.status === 'PENDING' || task.status === 'IN_PROGRESS') {
+                    agentStats.outstandingTasksCount += 1;
+                  }
+                }
+              }
+            });
+            
+            // Convert map to array for state
+            const updatedStats = Array.from(statsMap.values());
+            
+            // Only update if we have stats to show
+            if (updatedStats.length > 0) {
+              setAgentStats(updatedStats);
+            } else {
+              // Fallback to initial stats if our calculation produced no results
+              setAgentStats(initialAgentStats);
+            }
+          }
         }
         
         setLoading(false);
@@ -187,48 +287,27 @@ function ActivityPageClient() {
     fetchData();
   }, [session, dateFilter, stageFilter, dispositionFilter, agentFilter]);
   
-  // Calculate agent stats whenever leads change
+  // Add a safety check to ensure agent stats are displayed
   useEffect(() => {
-    if (leads.length > 0 && agents.length > 0) {
-      // Create a map to store agent stats
-      const statsMap = new Map<string, AgentStats>();
+    if (agents.length > 0 && agentStats.length === 0) {
+      // If we have agents but no stats, recalculate basic stats
+      const basicStats = agents.map(agent => ({
+        id: agent.id,
+        name: agent.name || agent.email,
+        email: agent.email,
+        leadsCount: 0,
+        dispositionsCount: 0,
+        stageTransitions: 0,
+        notesCount: 0,
+        actionsCount: 0,
+        activeLeadsCount: 0,
+        scheduledTasksCompleted: 0,
+        outstandingTasksCount: 0
+      }));
       
-      // Initialize stats for each agent
-      agents.forEach(agent => {
-        statsMap.set(agent.id, {
-          id: agent.id,
-          name: agent.name || agent.email,
-          email: agent.email,
-          leadsCount: 0,
-          dispositionsCount: 0,
-          stageTransitions: 0,
-          notesCount: 0,
-          actionsCount: 0
-        });
-      });
-      
-      // Count leads assigned to each agent
-      leads.forEach(lead => {
-        if (lead.assignedUser?.id) {
-          const agentId = lead.assignedUser.id;
-          const agentStats = statsMap.get(agentId);
-          
-          if (agentStats) {
-            // Increment lead count
-            agentStats.leadsCount += 1;
-            
-            // Count disposition if present
-            if (lead.lastDisposition) {
-              agentStats.dispositionsCount += 1;
-            }
-          }
-        }
-      });
-      
-      // Convert map to array for state
-      setAgentStats(Array.from(statsMap.values()));
+      setAgentStats(basicStats);
     }
-  }, [leads, agents]);
+  }, [agents, agentStats]);
   
   // Apply filters to leads
   useEffect(() => {
@@ -323,29 +402,6 @@ function ActivityPageClient() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-blue-700">Lead Activity Tracker</h1>
       
-      {/* Agent Performance Stats */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Agent Performance</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {agentStats.map(agent => (
-            <div key={agent.id} className="bg-white rounded-lg shadow p-4">
-              <h3 className="font-medium text-lg">{agent.name}</h3>
-              <p className="text-gray-500 text-sm mb-2">{agent.email}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-blue-50 p-2 rounded">
-                  <p className="text-xs text-gray-500">Leads</p>
-                  <p className="text-xl font-bold">{agent.leadsCount}</p>
-                </div>
-                <div className="bg-green-50 p-2 rounded">
-                  <p className="text-xs text-gray-500">Dispositions</p>
-                  <p className="text-xl font-bold">{agent.dispositionsCount}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-8">
         <h2 className="text-lg font-semibold mb-4">Filters</h2>
@@ -415,13 +471,50 @@ function ActivityPageClient() {
               }}
             >
               <option value="">All Agents</option>
-              {agents.map(agent => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.name || agent.email}
-                </option>
+              {agents.filter(agent => agent.id && (agent.role === 'AGENT' || !agent.role)).map(agent => (
+                <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
               ))}
             </select>
           </div>
+        </div>
+      </div>
+      
+      {/* Agent Performance Stats */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Agent Performance</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {agentStats
+            .filter(agent => {
+              // Only show agents with AGENT role (exclude admin and content admin)
+              const agentUser = agents.find(user => user.id === agent.id);
+              return agentUser && (agentUser.role === 'AGENT' || !agentUser.role || agentUser.role !== 'ADMIN' && agentUser.role !== 'CONTENT_ADMIN');
+            })
+            .map(agent => (
+            <div key={agent.id} className="bg-white rounded-lg shadow p-4">
+              <h3 className="font-medium text-lg">{agent.name}</h3>
+              <p className="text-gray-500 text-sm mb-2">{agent.email}</p>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="bg-blue-50 p-2 rounded">
+                  <p className="text-xs text-gray-500">Leads</p>
+                  <p className="text-xl font-bold">{agent.leadsCount}</p>
+                </div>
+                <div className="bg-green-50 p-2 rounded">
+                  <p className="text-xs text-gray-500">Active Leads</p>
+                  <p className="text-xl font-bold">{agent.activeLeadsCount}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-amber-50 p-2 rounded">
+                  <p className="text-xs text-gray-500">Tasks Completed</p>
+                  <p className="text-xl font-bold">{agent.scheduledTasksCompleted}</p>
+                </div>
+                <div className="bg-red-50 p-2 rounded">
+                  <p className="text-xs text-gray-500">Outstanding Tasks</p>
+                  <p className="text-xl font-bold">{agent.outstandingTasksCount}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       
