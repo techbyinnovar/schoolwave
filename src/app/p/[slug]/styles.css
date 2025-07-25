@@ -1,0 +1,16 @@
+/* Override default background styling */
+.custom-page-layout {
+  background: transparent !important;
+}
+
+/* Remove any global background styling */
+body, html {
+  background: transparent !important;
+}
+
+/* Ensure no gradient background */
+.custom-page-layout::before,
+.custom-page-layout::after {
+  display: none !important;
+  background: none !important;
+}

@@ -1,0 +1,19 @@
+/* Override all background styles */
+html, body {
+  background: white !important;
+  background-color: white !important;
+  background-image: none !important;
+}
+
+/* Remove any gradient effects */
+body::before,
+body::after {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+}
+
+/* Ensure content is displayed without any background styling */
+div, main, article, section {
+  background: white !important;
+}
