@@ -44,6 +44,20 @@ export default function PublicFormPage() {
     fetch(`/api/forms/${id}`)
       .then(res => res.json())
       .then(data => {
+        console.log('Form data:', data);
+        console.log('Form fields type:', typeof data.fields);
+        console.log('Is array:', Array.isArray(data.fields));
+        
+        // If fields is a string, try to parse it
+        if (typeof data.fields === 'string') {
+          try {
+            data.fields = JSON.parse(data.fields);
+            console.log('Parsed fields:', data.fields);
+          } catch (e) {
+            console.error('Failed to parse fields:', e);
+          }
+        }
+        
         setForm(data);
         setLoading(false);
       });
@@ -62,7 +76,15 @@ export default function PublicFormPage() {
       const leadFields = ['name', 'email', 'phone', 'schoolName'];
       const lead: any = {};
       const responseData: any = {};
-      form.fields.forEach((f: any) => {
+      
+      // Handle fields whether they're an array or object
+      const fieldsArray = Array.isArray(form.fields) 
+        ? form.fields 
+        : typeof form.fields === 'object' && form.fields !== null 
+          ? Object.values(form.fields) 
+          : [];
+          
+      fieldsArray.forEach((f: any) => {
         if (leadFields.includes(f.name)) {
           lead[f.name] = values[f.name] || '';
         } else {
@@ -106,12 +128,25 @@ export default function PublicFormPage() {
           <h1 className="text-3xl font-bold mb-2 text-center text-gray-900 dark:text-white">{form?.name}</h1>
           <p className="mb-6 text-center text-gray-700 dark:text-gray-300">{form?.description}</p>
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {form?.fields?.map((field: any) => (
-              <div key={field.name}>
-                <label className="block mb-1 font-semibold text-gray-900 dark:text-white">{field.label || field.name}{field.required && <span className="text-red-500 dark:text-red-400">*</span>}</label>
-                {renderField(field, values[field.name], (v: any) => setFieldValue(field.name, v))}
-              </div>
-            ))}
+
+            {Array.isArray(form?.fields) ? (
+              form.fields.map((field: any) => (
+                <div key={field.name}>
+                  <label className="block mb-1 font-semibold text-gray-900 dark:text-white">{field.label || field.name}{field.required && <span className="text-red-500 dark:text-red-400">*</span>}</label>
+                  {renderField(field, values[field.name], (v: any) => setFieldValue(field.name, v))}
+                </div>
+              ))
+            ) : typeof form?.fields === 'object' && form?.fields !== null ? (
+              // If fields is an object but not array, try to convert to array
+              Object.values(form.fields).map((field: any, index: number) => (
+                <div key={index}>
+                  <label className="block mb-1 font-semibold text-gray-900 dark:text-white">{field.label || field.name}{field.required && <span className="text-red-500 dark:text-red-400">*</span>}</label>
+                  {renderField(field, values[field.name], (v: any) => setFieldValue(field.name, v))}
+                </div>
+              ))
+            ) : (
+              <div className="text-yellow-600 p-4 bg-yellow-100 rounded">No form fields available</div>
+            )}
             {error && <div className="alert alert-error text-white dark:text-white">{error}</div>}
             <button type="submit" className="btn btn-primary w-full" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit'}</button>
           </form>

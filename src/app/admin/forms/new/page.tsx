@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ChoiceOptionsEditor from '@/components/admin/forms/ChoiceOptionsEditor';
 import BannerImageUploader from '@/components/admin/forms/BannerImageUploader';
@@ -38,10 +38,39 @@ export default function NewFormPage() {
     setFields(f => f.filter((_, i) => i !== idx));
   }
   const [stageId, setStageId] = useState('');
+  const [stages, setStages] = useState<{id: string, name: string}[]>([]);
+  const [loadingStages, setLoadingStages] = useState(true);
   const [published, setPublished] = useState(false);
   const [allowMultipleSubmissions, setAllowMultipleSubmissions] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Fetch stages for dropdown
+  useEffect(() => {
+    setLoadingStages(true);
+    fetch('/api/stages', {
+      method: 'GET',
+      credentials: 'include', // Include credentials (cookies) with the request
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Failed to load stages: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log('Loaded stages:', data);
+        setStages(data);
+        setLoadingStages(false);
+      })
+      .catch(err => {
+        console.error('Failed to load stages:', err);
+        setLoadingStages(false);
+      });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -196,8 +225,18 @@ export default function NewFormPage() {
           <button type="button" className="btn btn-outline btn-sm mt-2" onClick={addField}>Add Field</button>
         </div>
         <div>
-          <label className="block font-medium">Stage ID (optional)</label>
-          <input className="input input-bordered w-full" value={stageId} onChange={e => setStageId(e.target.value)} />
+          <label className="block font-medium">Stage (optional)</label>
+          <select 
+            className="select select-bordered w-full" 
+            value={stageId} 
+            onChange={e => setStageId(e.target.value)}
+          >
+            <option value="">Select a stage</option>
+            {stages.map(stage => (
+              <option key={stage.id} value={stage.id}>{stage.name}</option>
+            ))}
+          </select>
+          {loadingStages && <div className="text-sm text-gray-500 mt-1">Loading stages...</div>}
         </div>
         <div className="flex items-center gap-2">
           <input
