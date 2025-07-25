@@ -61,7 +61,7 @@ export default function FormsAdminPage() {
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${form.published ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{form.published ? 'Yes' : 'No'}</span>
                   </td>
-                  <td className="px-4 py-3 text-center">{form._count?.FormResponse ?? 0}</td>
+                  <td className="px-4 py-3 text-center">{form._count?.responses ?? 0}</td>
                   <td className="px-4 py-3 space-x-1">
                     <Link href={`/admin/forms/${form.id}/edit`} className="btn btn-xs btn-secondary">Edit</Link>
                     <Link href={`/f/${form.id}`} className="btn btn-xs btn-accent" target="_blank" rel="noopener noreferrer">View Public Page</Link>
