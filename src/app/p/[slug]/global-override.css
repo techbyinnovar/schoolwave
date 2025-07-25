@@ -1,0 +1,30 @@
+/* Reset all background styles */
+html, 
+body {
+  background: white !important;
+  background-image: none !important;
+  background-color: white !important;
+}
+
+/* Override the specific gradient styling from globals.css */
+body::before,
+body::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+}
+
+/* Override any root variables that might be causing the gradient */
+:root {
+  --background-start-rgb: 255, 255, 255 !important;
+  --background-end-rgb: 255, 255, 255 !important;
+}
+
+/* Target any elements with striped backgrounds */
+[class*="bg-striped"],
+[class*="striped-bg"],
+[class*="gradient"] {
+  background: white !important;
+  background-image: none !important;
+}
