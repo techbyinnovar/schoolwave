@@ -8,7 +8,17 @@ export async function GET() {
     include: { Stage: true, _count: { select: { FormResponse: true } } },
     orderBy: { createdAt: 'desc' },
   });
-  return NextResponse.json(forms);
+  
+  // Map the FormResponse count to responses for frontend compatibility
+  const formsWithMappedCounts = forms.map(form => ({
+    ...form,
+    _count: {
+      ...form._count,
+      responses: form._count?.FormResponse || 0
+    }
+  }));
+  
+  return NextResponse.json(formsWithMappedCounts);
 }
 
 // POST /api/forms - create a new form

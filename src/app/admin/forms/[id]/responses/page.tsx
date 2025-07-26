@@ -20,7 +20,54 @@ export default function FormResponsesPage() {
   }, [id]);
 
   const [selectedResponse, setSelectedResponse] = useState<any | null>(null);
-  const requiredFields = form?.fields?.filter((f: any) => f.required) || [];
+  
+  // Ensure form.fields is an array before filtering
+  const getFieldsArray = () => {
+    if (!form?.fields) return [];
+    
+    // If fields is already an array
+    if (Array.isArray(form.fields)) {
+      return form.fields;
+    }
+    
+    // If fields is a string (JSON), try to parse it
+    if (typeof form.fields === 'string') {
+      try {
+        const parsed = JSON.parse(form.fields);
+        // Check if parsed result is an array
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+        // If it's an object with numeric keys or allowMultipleSubmissions property
+        if (typeof parsed === 'object' && parsed !== null) {
+          // If allowMultipleSubmissions is a property, remove it before processing fields
+          if ('allowMultipleSubmissions' in parsed) {
+            const { allowMultipleSubmissions, ...restFields } = parsed;
+            return Object.values(restFields);
+          }
+          return Object.values(parsed);
+        }
+      } catch (e) {
+        console.error('Error parsing form fields:', e);
+        return [];
+      }
+    }
+    
+    // If fields is an object with numeric keys
+    if (typeof form.fields === 'object' && form.fields !== null) {
+      // If allowMultipleSubmissions is a property, remove it before processing fields
+      if ('allowMultipleSubmissions' in form.fields) {
+        const { allowMultipleSubmissions, ...restFields } = form.fields;
+        return Object.values(restFields);
+      }
+      return Object.values(form.fields);
+    }
+    
+    return [];
+  };
+  
+  const fieldsArray = getFieldsArray();
+  const requiredFields = fieldsArray.filter((f: any) => f.required) || [];
 
   return (
     <div className="max-w-4xl mx-auto py-8">
@@ -76,7 +123,7 @@ export default function FormResponsesPage() {
               <div className="mb-4 text-xs text-gray-500">Submitted: {new Date(selectedResponse.createdAt).toLocaleString()}</div>
               <table className="w-full text-sm mb-2">
                 <tbody>
-                  {form.fields.map((field: any) => {
+                  {fieldsArray.map((field: any) => {
                     let value;
                     if (field.name === 'name' || field.name === 'email' || field.name === 'phone' || field.name === 'schoolName') {
                       value = selectedResponse.Lead?.[field.name];
