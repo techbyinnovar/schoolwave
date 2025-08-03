@@ -15,7 +15,7 @@ export default function TestEmailPage() {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [templates, setTemplates] = useState([]);
+  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -47,7 +47,17 @@ export default function TestEmailPage() {
           addLog('error', 'Failed to load message templates');
         }
       } catch (error) {
-        addLog('error', `Error loading templates: ${error.message || 'Unknown error'}`);
+        let msg = 'Unknown error';
+        if (error instanceof Error) {
+          msg = error.message;
+        } else if (typeof error === 'string') {
+          msg = error;
+        } else if (error && typeof error === 'object' && 'message' in error) {
+          msg = (error as any).message;
+        } else {
+          msg = String(error);
+        }
+        addLog('error', `Error loading templates: ${msg}`);
       }
     };
     
@@ -55,7 +65,7 @@ export default function TestEmailPage() {
   }, []);
   
   // Handle template selection
-  const handleTemplateChange = async (templateId) => {
+  const handleTemplateChange = async (templateId: string) => {
     if (!templateId) {
       setSelectedTemplate('');
       return;
@@ -77,7 +87,17 @@ export default function TestEmailPage() {
         addLog('error', 'Failed to load template details');
       }
     } catch (error) {
-      addLog('error', `Error loading template: ${error.message || 'Unknown error'}`);
+      let msg = 'Unknown error';
+    if (error instanceof Error) {
+      msg = error.message;
+    } else if (typeof error === 'string') {
+      msg = error;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      msg = (error as any).message;
+    } else {
+      msg = String(error);
+    }
+    addLog('error', `Error loading template: ${msg}`);
     }
   };
 
@@ -189,9 +209,15 @@ export default function TestEmailPage() {
         setResult({ success: false, message: data.error || 'Failed to send email' });
         addLog('error', `Failed to send email: ${data.error || 'Unknown error'}`);
       }
-    } catch (error: any) {
-      setResult({ success: false, message: error.message || 'An error occurred' });
-      addLog('error', `Error: ${error.message || 'Unknown error'}`);
+    } catch (error) {
+      let msg = 'Unknown error';
+      if (error instanceof Error) {
+        msg = error.message;
+      } else {
+        msg = String(error);
+      }
+      setResult({ success: false, message: msg });
+      addLog('error', `Error: ${msg}`);
     } finally {
       setSending(false);
     }

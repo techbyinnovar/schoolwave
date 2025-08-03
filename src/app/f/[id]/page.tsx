@@ -4,8 +4,6 @@ import { useParams, useRouter } from 'next/navigation';
 import FileUploadField from '@/components/form/FileUploadField';
 
 function renderField(field: any, value: any, setValue: (v: any) => void) {
-  console.log('Rendering field:', field);
-
   switch (field.type) {
     case 'email':
       return <input type="email" className="input input-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
@@ -27,6 +25,7 @@ function renderField(field: any, value: any, setValue: (v: any) => void) {
           allowMultiple={field.allowMultiple}
         />
       );
+    case 'multichoice':
     case 'multiChoice':
       return (
         <select
@@ -76,14 +75,15 @@ export default function PublicFormPage() {
         
         // Defensive normalization for fields
         let normalizedFields = data.fields;
+        const isMultiChoiceType = (t: any) => t === 'multichoice' || t === 'multiChoice';
         if (Array.isArray(normalizedFields)) {
           normalizedFields = normalizedFields.map((f: any) => {
             // If field is named 'testing' and should be multichoice, force type
             if ((f.name?.toLowerCase?.() === 'testing' || f.label?.toLowerCase?.() === 'testing') && (!f.type || f.type === 'text')) {
               f.type = 'multichoice';
             }
-            // If type is multichoice but options missing, add empty array
-            if (f.type === 'multichoice' && !Array.isArray(f.options)) {
+            // If type is multichoice or multiChoice but options missing, add empty array
+            if (isMultiChoiceType(f.type) && !Array.isArray(f.options)) {
               f.options = [];
             }
             return f;
@@ -94,7 +94,7 @@ export default function PublicFormPage() {
             if ((f.name?.toLowerCase?.() === 'testing' || f.label?.toLowerCase?.() === 'testing') && (!f.type || f.type === 'text')) {
               f.type = 'multichoice';
             }
-            if (f.type === 'multichoice' && !Array.isArray(f.options)) {
+            if (isMultiChoiceType(f.type) && !Array.isArray(f.options)) {
               f.options = [];
             }
           });
