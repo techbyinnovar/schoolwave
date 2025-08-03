@@ -151,6 +151,7 @@ model MessageTemplate {
   createdAt              DateTime   @default(now())
   updatedAt              DateTime
   emailDesign            Json?
+  deliveryMediums        Json?      @default("{\"email\": true, \"whatsapp\": false}")
   Message                Message[]
   User                   User       @relation(fields: [createdById], references: [id])
   Stage                  Stage[]

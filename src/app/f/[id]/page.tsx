@@ -4,6 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import FileUploadField from '@/components/form/FileUploadField';
 
 function renderField(field: any, value: any, setValue: (v: any) => void) {
+  console.log('Rendering field:', field);
+
   switch (field.type) {
     case 'email':
       return <input type="email" className="input input-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
@@ -24,6 +26,20 @@ function renderField(field: any, value: any, setValue: (v: any) => void) {
           allowedTypes={field.allowedTypes}
           allowMultiple={field.allowMultiple}
         />
+      );
+    case 'multiChoice':
+      return (
+        <select
+          className="select select-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+          required={field.required}
+          value={value || ''}
+          onChange={e => setValue(e.target.value)}
+        >
+          <option value="" disabled>{field.label}</option>
+          {(field.options || []).map((opt: any, idx: number) => (
+            <option key={idx} value={opt.value ?? opt}>{opt.label ?? opt}</option>
+          ))}
+        </select>
       );
     default:
       return <input type="text" className="input input-bordered w-full text-gray-900 dark:text-white bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600" required={field.required} value={value || ''} onChange={e => setValue(e.target.value)} placeholder={field.label} />;
@@ -58,6 +74,32 @@ export default function PublicFormPage() {
           }
         }
         
+        // Defensive normalization for fields
+        let normalizedFields = data.fields;
+        if (Array.isArray(normalizedFields)) {
+          normalizedFields = normalizedFields.map((f: any) => {
+            // If field is named 'testing' and should be multichoice, force type
+            if ((f.name?.toLowerCase?.() === 'testing' || f.label?.toLowerCase?.() === 'testing') && (!f.type || f.type === 'text')) {
+              f.type = 'multichoice';
+            }
+            // If type is multichoice but options missing, add empty array
+            if (f.type === 'multichoice' && !Array.isArray(f.options)) {
+              f.options = [];
+            }
+            return f;
+          });
+        } else if (typeof normalizedFields === 'object' && normalizedFields !== null) {
+          Object.keys(normalizedFields).forEach(key => {
+            const f = normalizedFields[key];
+            if ((f.name?.toLowerCase?.() === 'testing' || f.label?.toLowerCase?.() === 'testing') && (!f.type || f.type === 'text')) {
+              f.type = 'multichoice';
+            }
+            if (f.type === 'multichoice' && !Array.isArray(f.options)) {
+              f.options = [];
+            }
+          });
+        }
+        data.fields = normalizedFields;
         setForm(data);
         setLoading(false);
       });

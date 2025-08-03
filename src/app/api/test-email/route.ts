@@ -15,6 +15,19 @@ export async function POST(req: NextRequest) {
       hasAttachment: Boolean(attachmentUrl)
     });
     
+    // Add more detailed logging for attachment debugging
+    if (attachmentUrl) {
+      console.log('[TestEmail API] Attachment details:', {
+        type: typeof attachmentUrl,
+        length: attachmentUrl.length,
+        starts_with: attachmentUrl.substring(0, 20) + '...',
+        is_base64: attachmentUrl.startsWith('data:'),
+        is_url: attachmentUrl.startsWith('http')
+      });
+    } else {
+      console.log('[TestEmail API] No attachment URL provided');
+    }
+    
     if (!to || !message) {
       console.warn('[TestEmail API] Missing required fields');
       return NextResponse.json({ 
@@ -33,21 +46,63 @@ export async function POST(req: NextRequest) {
     try {
       let attachments = undefined;
       
-      if (attachmentUrl && attachmentUrl.startsWith('http')) {
-        // If there's an attachment URL, fetch it and include it as an attachment
-        const response = await fetch(attachmentUrl);
-        const buffer = await response.arrayBuffer();
-        const contentType = response.headers.get('content-type') || 'application/octet-stream';
-        
-        // Extract filename from URL or use a default
-        const urlParts = attachmentUrl.split('/');
-        const filename = urlParts[urlParts.length - 1] || 'attachment';
-        
-        attachments = [{
-          filename,
-          content: Buffer.from(buffer),
-          contentType
-        }];
+      if (attachmentUrl) {
+        if (attachmentUrl.startsWith('data:')) {
+          // Handle base64 data URL format: data:[<mediatype>][;base64],<data>
+          console.log('[TestEmail API] Processing base64 attachment');
+          try {
+            const matches = attachmentUrl.match(/^data:([\w\/\-\.]+);base64,(.+)$/);
+            
+            if (matches && matches.length === 3) {
+              const contentType = matches[1];
+              const base64Data = matches[2];
+              
+              // Generate filename based on content type
+              let extension = 'bin';
+              if (contentType.includes('image/')) {
+                extension = contentType.split('/')[1];
+              } else if (contentType.includes('application/pdf')) {
+                extension = 'pdf';
+              }
+              
+              const filename = `attachment-${new Date().getTime()}.${extension}`;
+              
+              attachments = [{
+                filename,
+                content: Buffer.from(base64Data, 'base64'),
+                contentType
+              }];
+              
+              console.log(`[TestEmail API] Base64 attachment processed: ${filename} (${contentType})`);
+            } else {
+              console.error('[TestEmail API] Invalid base64 data URL format');
+            }
+          } catch (base64Error) {
+            console.error('[TestEmail API] Error processing base64 attachment:', base64Error);
+          }
+        } else if (attachmentUrl.startsWith('http')) {
+          // If there's an attachment URL, fetch it and include it as an attachment
+          console.log('[TestEmail API] Fetching attachment from URL');
+          try {
+            const response = await fetch(attachmentUrl);
+            const buffer = await response.arrayBuffer();
+            const contentType = response.headers.get('content-type') || 'application/octet-stream';
+            
+            // Extract filename from URL or use a default
+            const urlParts = attachmentUrl.split('/');
+            const filename = urlParts[urlParts.length - 1] || 'attachment';
+            
+            attachments = [{
+              filename,
+              content: Buffer.from(buffer),
+              contentType
+            }];
+            
+            console.log(`[TestEmail API] URL attachment processed: ${filename} (${contentType})`);
+          } catch (fetchError) {
+            console.error('[TestEmail API] Error fetching attachment from URL:', fetchError);
+          }
+        }
       }
       
       await sendSmtpMail({

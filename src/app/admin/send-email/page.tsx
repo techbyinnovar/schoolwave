@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,8 @@ export default function TestEmailPage() {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [logs, setLogs] = useState<Array<{ type: 'info' | 'error' | 'success'; message: string; timestamp: Date }>>([]);
@@ -30,17 +32,88 @@ export default function TestEmailPage() {
     }, 100);
   };
 
+  // Fetch message templates when component mounts
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        addLog('info', 'Fetching message templates...');
+        const response = await fetch('/api/message-template');
+        const data = await response.json();
+        
+        if (response.ok && data.result?.data) {
+          setTemplates(data.result.data);
+          addLog('success', `Loaded ${data.result.data.length} message templates`);
+        } else {
+          addLog('error', 'Failed to load message templates');
+        }
+      } catch (error) {
+        addLog('error', `Error loading templates: ${error.message || 'Unknown error'}`);
+      }
+    };
+    
+    fetchTemplates();
+  }, []);
+  
+  // Handle template selection
+  const handleTemplateChange = async (templateId) => {
+    if (!templateId) {
+      setSelectedTemplate('');
+      return;
+    }
+    
+    setSelectedTemplate(templateId);
+    addLog('info', `Loading template with ID: ${templateId}`);
+    
+    try {
+      const response = await fetch(`/api/message-template/${templateId}`);
+      const data = await response.json();
+      
+      if (response.ok && data.result?.data) {
+        const template = data.result.data;
+        setSubject(template.subject || '');
+        setMessage(template.content || '');
+        addLog('success', 'Template loaded successfully');
+      } else {
+        addLog('error', 'Failed to load template details');
+      }
+    } catch (error) {
+      addLog('error', `Error loading template: ${error.message || 'Unknown error'}`);
+    }
+  };
+
   const clearLogs = () => {
     setLogs([]);
   };
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Create a URL for the file
-      const fileUrl = URL.createObjectURL(file);
-      setCloudinaryMedia(fileUrl);
-      addLog('info', `File selected: ${file.name}`);
+      
+      // Check file size (limit to 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        addLog('error', `File too large: ${file.name} (${Math.round(file.size / 1024)} KB). Maximum size is 5MB.`);
+        setResult({ success: false, message: 'File too large. Maximum size is 5MB.' });
+        return;
+      }
+      
+      addLog('info', `Reading file: ${file.name} (${Math.round(file.size / 1024)} KB)`);
+      
+      // Read the file as a data URL (base64) to send to the server
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const dataUrl = event.target.result as string;
+          // Store the data URL which includes the file content and type
+          setCloudinaryMedia(dataUrl);
+          addLog('info', `File loaded successfully: ${file.name} (${dataUrl.substring(0, 20)}...)`);
+        }
+      };
+      reader.onerror = (error) => {
+        addLog('error', `Error reading file: ${error}`);
+        setResult({ success: false, message: 'Error reading file' });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -62,20 +135,42 @@ export default function TestEmailPage() {
       // Log the attachment URL for debugging
       if (finalAttachmentUrl) {
         addLog('info', `Using attachment URL: ${finalAttachmentUrl.substring(0, 30)}...`);
+        console.log('Attachment type:', typeof finalAttachmentUrl);
+        console.log('Attachment starts with:', finalAttachmentUrl.substring(0, 50));
       }
       
-      const payload = { 
+      // Create payload with all required fields
+      const payload: any = { 
         to: email, 
         subject,
-        message
+        message,
+        templateId: selectedTemplate || undefined
       };
       
-      // Only include attachmentUrl if it's a valid URL
-      if (finalAttachmentUrl && finalAttachmentUrl.startsWith('http')) {
-        Object.assign(payload, { attachmentUrl: finalAttachmentUrl });
+      // Include attachmentUrl regardless of type (http or data:)
+      if (finalAttachmentUrl) {
+        addLog('info', 'Adding attachment to payload');
+        payload.attachmentUrl = finalAttachmentUrl;
+        
+        // Log payload size for debugging
+        const payloadSize = JSON.stringify(payload).length;
+        addLog('info', `Payload size: ${Math.round(payloadSize / 1024)} KB`);
+        
+        // Check if payload is too large
+        if (payloadSize > 4 * 1024 * 1024) { // 4MB limit
+          addLog('error', 'Payload too large. Try a smaller file.');
+          setResult({ success: false, message: 'Payload too large. Try a smaller file.' });
+          return;
+        }
       }
       
-      addLog('info', `Sending payload: ${JSON.stringify(payload, null, 2)}`);
+      // Log payload without the full attachment content to avoid overwhelming the logs
+      const logPayload = {...payload};
+      if (logPayload.attachmentUrl) {
+        logPayload.attachmentUrl = `${logPayload.attachmentUrl.substring(0, 50)}... [truncated]`;
+      }
+      addLog('info', `Sending payload: ${JSON.stringify(logPayload, null, 2)}`);
+      addLog('info', 'Sending email request to server...');
       
       const response = await fetch('/api/test-email', {
         method: 'POST',
@@ -123,6 +218,25 @@ export default function TestEmailPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="template">Message Template</Label>
+                <select
+                  id="template"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={selectedTemplate}
+                  onChange={(e) => handleTemplateChange(e.target.value)}
+                >
+                  <option value="">No template (custom message)</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="text-xs text-gray-500 mt-1">
+                  Selecting a template will populate the subject and message fields
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
@@ -180,6 +294,7 @@ export default function TestEmailPage() {
                             className="hidden" 
                             onChange={handleFileInputChange}
                             accept="image/*,application/pdf"
+                            key={cloudinaryMedia ? 'has-file' : 'no-file'} // Force re-render when cleared
                           />
                         </label>
                       </div>
@@ -228,6 +343,7 @@ export default function TestEmailPage() {
                   setMessage('');
                   setAttachmentUrl('');
                   setCloudinaryMedia('');
+                  setSelectedTemplate('');
                   setResult(null);
                   addLog('info', 'Form cleared');
                 }}
