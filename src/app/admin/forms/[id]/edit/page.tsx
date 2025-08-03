@@ -14,6 +14,7 @@ export default function EditFormPage() {
   // Define field type
   type FieldType = {
     label: string;
+    displayName?: string; // public-facing name
     type: string;
     name: string;
     required: boolean;
@@ -159,11 +160,17 @@ export default function EditFormPage() {
               <div key={idx} className="border p-3 rounded bg-gray-50">
                 <div className="flex gap-2 mb-2">
                   <input
-                    className="input input-bordered flex-1"
-                    placeholder="Label"
+                    className="input input-bordered"
+                    placeholder="Label (internal)"
                     value={field.label}
                     onChange={e => handleFieldChange(idx, 'label', e.target.value)}
                     required
+                  />
+                  <input
+                    className="input input-bordered mt-1"
+                    placeholder="Display Name (public)"
+                    value={field.displayName || ''}
+                    onChange={e => handleFieldChange(idx, 'displayName', e.target.value)}
                   />
                   <select
                     className="select select-bordered"

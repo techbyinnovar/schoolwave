@@ -174,7 +174,7 @@ export default function PublicFormPage() {
             {Array.isArray(form?.fields) ? (
               form.fields.map((field: any) => (
                 <div key={field.name}>
-                  <label className="block mb-1 font-semibold text-gray-900 dark:text-white">{field.label || field.name}{field.required && <span className="text-red-500 dark:text-red-400">*</span>}</label>
+                  <label className="block mb-1 font-semibold text-gray-900 dark:text-white">{field.displayName || field.label || field.name}{field.required && <span className="text-red-500 dark:text-red-400">*</span>}</label>
                   {renderField(field, values[field.name], (v: any) => setFieldValue(field.name, v))}
                 </div>
               ))
@@ -182,7 +182,7 @@ export default function PublicFormPage() {
               // If fields is an object but not array, try to convert to array
               Object.values(form.fields).map((field: any, index: number) => (
                 <div key={index}>
-                  <label className="block mb-1 font-semibold text-gray-900 dark:text-white">{field.label || field.name}{field.required && <span className="text-red-500 dark:text-red-400">*</span>}</label>
+                  <label className="block mb-1 font-semibold text-gray-900 dark:text-white">{field.displayName || field.label || field.name}{field.required && <span className="text-red-500 dark:text-red-400">*</span>}</label>
                   {renderField(field, values[field.name], (v: any) => setFieldValue(field.name, v))}
                 </div>
               ))

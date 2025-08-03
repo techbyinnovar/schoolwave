@@ -10,6 +10,7 @@ export default function NewFormPage() {
   const [description, setDescription] = useState('');
   type FieldType = {
     label: string;
+    displayName?: string; // public-facing name
     type: string;
     name: string;
     required: boolean;
@@ -125,10 +126,16 @@ export default function NewFormPage() {
                 <div className="flex gap-2 mb-2">
                   <input
                     className="input input-bordered flex-1"
-                    placeholder="Label"
+                    placeholder="Label (internal)"
                     value={field.label}
                     onChange={e => handleFieldChange(idx, 'label', e.target.value)}
                     required
+                  />
+                  <input
+                    className="input input-bordered mt-1"
+                    placeholder="Display Name (public)"
+                    value={field.displayName || ''}
+                    onChange={e => handleFieldChange(idx, 'displayName', e.target.value)}
                   />
                   <select
                     className="select select-bordered"
