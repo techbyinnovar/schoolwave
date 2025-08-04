@@ -17,6 +17,13 @@ export default function MessageTemplateForm({
   onSaved,
   onClose,
 }: MessageTemplateFormProps) {
+  const handleCloudinaryWhatsappUpload = React.useCallback((result: any) => {
+    if (result?.secure_url) {
+      setCloudinaryWhatsappMedia(result.secure_url);
+      setWhatsappImages(prev => [...prev, result.secure_url]);
+      toast.success('Media uploaded successfully');
+    }
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [name, setName] = useState(template?.name || "");
@@ -274,13 +281,7 @@ export default function MessageTemplateForm({
                 <div>
                   <div className="mb-2">
                     <CloudinaryUploadWidget
-                      onUploadSuccess={useCallback((result: any) => {
-                        if (result?.secure_url) {
-                          setCloudinaryWhatsappMedia(result.secure_url);
-                          setWhatsappImages(prev => [...prev, result.secure_url]);
-                          toast.success('Media uploaded successfully');
-                        }
-                      }, [])}
+                      onUploadSuccess={handleCloudinaryWhatsappUpload}
                       buttonText="Upload Media to WhatsApp"
                       folder="whatsapp-media"
                       resourceType="auto"
