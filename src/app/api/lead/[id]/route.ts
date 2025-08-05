@@ -131,15 +131,18 @@ export async function PATCH(
         include: { MessageTemplate: true }
       });
       if (stage?.MessageTemplate) {
-        // fire and forget; do not block response
-        sendTemplateToLead({
+        // DEBUG: Await sendTemplateToLead to ensure logs/errors are visible
+        await sendTemplateToLead({
           lead,
           agent: lead.assignedUser,
-          template: stage.MessageTemplate,
+          template: {
+            ...stage.MessageTemplate,
+            debugEmailHtml: stage.MessageTemplate?.emailHtml,
+          },
           userId,
           fromStage: existingLead?.Stage?.name ?? null,
           toStage: stage.name ?? null,
-        }).catch(console.error);
+        });
       }
     }
 

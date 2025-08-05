@@ -116,8 +116,18 @@ export async function PATCH(req: NextRequest) {
 
   // If stageId changed, and new stage has defaultTemplateId, send template
   if (update.stageId && update.stageId !== prevStageId) {
+    console.log('[PATCH /api/lead] Stage changed:', { prevStageId, newStageId: update.stageId });
     const stage = await prisma.stage.findUnique({ where: { id: update.stageId }, include: { MessageTemplate: true } });
+    console.log('[PATCH /api/lead] Fetched stage:', stage);
     if (stage?.defaultTemplateId && stage.MessageTemplate) {
+      console.log('[PATCH /api/lead] About to call sendTemplateToLead', {
+        leadId: lead.id,
+        agent: lead.assignedUser,
+        templateId: stage.MessageTemplate.id,
+        userId: null,
+        fromStage: prevStageId,
+        toStage: update.stageId,
+      });
       await sendTemplateToLead({
         lead,
         agent: lead.assignedUser,
@@ -126,6 +136,9 @@ export async function PATCH(req: NextRequest) {
         fromStage: prevStageId,
         toStage: update.stageId,
       });
+      console.log('[PATCH /api/lead] sendTemplateToLead finished');
+    } else {
+      console.log('[PATCH /api/lead] Stage has no defaultTemplateId or MessageTemplate:', stage);
     }
   }
 

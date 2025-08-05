@@ -24,6 +24,14 @@ interface SendTemplateToLeadParams {
 }
 
 export async function sendTemplateToLead({ lead, agent, template, userId, fromStage, toStage }: SendTemplateToLeadParams) {
+  console.log('[sendTemplateToLead] called with', {
+    leadId: lead?.id,
+    agent,
+    templateId: template?.id,
+    userId,
+    fromStage,
+    toStage
+  });
   // Normalize userId for FK constraint (used everywhere in this function)
   const normalizedUserId = userId && typeof userId === 'string' && userId.trim().length > 0 ? userId : null;
   // If stage movement is present, create a note for it
@@ -55,6 +63,10 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
   // --- Send Email (log result as action) ---
   let emailStatus = 'not attempted';
   let emailNote = '';
+  console.log('[sendTemplateToLead] Checking email send condition', {
+    leadEmail: lead.email,
+    templateEmailHtml: template.emailHtml ? '[present]' : '[missing]'
+  });
   if (lead.email && template.emailHtml) {
     try {
       // Fetch attachments from DB if present
@@ -66,6 +78,12 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
       // No inline images or DB attachments, so just use attachments (empty array)
       const allAttachments = attachments;
 
+      console.log('[sendTemplateToLead] Sending email with', {
+        to: lead.email,
+        subject: render(template.subject || ''),
+        html,
+        attachments: allAttachments,
+      });
       await sendSmtpMail({
         to: lead.email,
         subject: render(template.subject || ''),
@@ -77,6 +95,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
     } catch (err) {
       emailStatus = 'error';
       emailNote = `Email failed: ${err instanceof Error ? err.message : String(err)}`;
+      console.error('[sendTemplateToLead] Email send error:', err);
     }
     await prisma.entityHistory.create({
       data: {
@@ -89,12 +108,20 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
         entityType: 'lead', // Required field in the EntityHistory model
       },
     });
+  } else {
+    if (!lead.email) console.log('[sendTemplateToLead] Lead has no email, skipping email send');
+    if (!template.emailHtml) console.log('[sendTemplateToLead] Template has no emailHtml, skipping email send');
   }
 
   // --- Send WhatsApp (log result as action) ---
   let waStatus = 'not attempted';
   let waNote = '';
+  console.log('[sendTemplateToLead] Checking WhatsApp send condition', {
+    leadPhone: lead.phone,
+    templateWhatsappText: template.whatsappText ? '[present]' : '[missing]'
+  });
   if (lead.phone && template.whatsappText) {
+    console.log('[sendTemplateToLead] Sending WhatsApp to', lead.phone, 'with text:', render(template.whatsappText));
     const result = await sendWhatsAppMessage(
       lead.phone,
       render(template.whatsappText)
@@ -106,6 +133,7 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
     } else {
       waStatus = 'error';
       waNote = `WhatsApp failed: ${result.error || 'Unknown error'}`;
+      console.error('[sendTemplateToLead] WhatsApp send error:', result.error);
     }
     await prisma.entityHistory.create({
       data: {
@@ -118,5 +146,9 @@ export async function sendTemplateToLead({ lead, agent, template, userId, fromSt
         entityType: 'lead', // Required field in the EntityHistory model
       },
     });
+  } else {
+    if (!lead.phone) console.log('[sendTemplateToLead] Lead has no phone, skipping WhatsApp send');
+    if (!template.whatsappText) console.log('[sendTemplateToLead] Template has no whatsappText, skipping WhatsApp send');
   }
 }
+
