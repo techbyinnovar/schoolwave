@@ -79,6 +79,11 @@ export default function LeadDetailModal({ leadId }: Props) {
 
   return (
     <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-2">
+      {/* DEBUG: Session and Role Info */}
+      <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 rounded px-2 py-1 text-xs">
+        <div><b>DEBUG:</b> session = {JSON.stringify(session)}</div>
+        <div><b>DEBUG:</b> userRole = {session?.user?.role || 'N/A'}</div>
+      </div>
       <h2 className="text-2xl font-bold">Lead Details</h2>
       <div className="text-sm space-y-1">
         <div><span className="font-semibold">School Name:</span> {lead.schoolName}</div>
@@ -96,6 +101,33 @@ export default function LeadDetailModal({ leadId }: Props) {
           }
         </div>
         <div><span className="font-semibold">Created At:</span> {new Date(lead.createdAt).toLocaleString()}</div>
+        {/* Demo Code Section */}
+        <div className="flex items-center gap-2 mt-2">
+          <span className="font-semibold">Demo Code:</span>
+          {lead.demoCode ? (
+            <span className="font-mono bg-green-100 px-2 py-1 rounded text-green-800">{lead.demoCode}</span>
+          ) : ((session?.user?.role === "ADMIN" || session?.user?.role === "AGENT") && (
+            <button
+              className="bg-blue-600 text-white px-3 py-1 rounded"
+              onClick={async () => {
+                try {
+                  const res = await fetch(`/api/lead/${lead.id}/demo-code`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                  });
+                  if (!res.ok) throw new Error("Failed to issue demo code");
+                  // Refresh lead
+                  const data = await res.json();
+                  setLead(data.result?.data ?? null);
+                } catch (e: any) {
+                  alert(e.message || "Failed to issue demo code");
+                }
+              }}
+            >
+              Issue Demo Code
+            </button>
+          ))}
+        </div>
       </div>
 
       <details open className="border rounded">

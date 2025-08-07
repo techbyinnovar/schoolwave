@@ -19,6 +19,7 @@ interface LeadDetail {
   agent?: { id: string; name?: string | null; email: string } | null;
   notes: Note[];
   history: LeadHistory[];
+  demoCode?: string | null;
 }
 interface Note {
   id: string;
@@ -40,6 +41,45 @@ interface LeadHistory {
 
 interface Props {
   leadId: string;
+}
+
+function IssueDemoCodeButton({ leadId, onIssued }: { leadId: string; onIssued: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  return (
+    <span>
+      <button
+        className="bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-60"
+        onClick={async () => {
+          setLoading(true);
+          setError("");
+          try {
+            const res = await fetch(`/api/lead/${leadId}/demo-code`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({})
+            });
+            if (!res.ok) {
+              if (res.status === 404) {
+                setError("Lead not found. Please check if the lead exists or was deleted.");
+                return;
+              }
+              throw new Error("Failed to issue demo code");
+            }
+            onIssued();
+          } catch (e: any) {
+            setError(e.message || "Failed to issue demo code");
+          } finally {
+            setLoading(false);
+          }
+        }}
+        disabled={loading}
+      >
+        {loading ? "Issuing..." : "Issue Demo Code"}
+      </button>
+      {error && <span className="text-red-600 ml-2">{error}</span>}
+    </span>
+  );
 }
 
 export default function LeadDetailContent({ leadId }: Props) {
@@ -99,14 +139,15 @@ export default function LeadDetailContent({ leadId }: Props) {
       setAgents(aRes.result?.data ?? []);
       setStages(sRes.result?.data ?? []);
       const l = lRes.result?.data ?? null;
-      
-      // Map API response fields to expected frontend fields
+      // Map backend fields to expected frontend fields
       const mappedLead = l ? {
         ...l,
+        stage: l.Stage ? { id: l.Stage.id, name: l.Stage.name } : null,
+        agent: l.assignedUser ? { id: l.assignedUser.id, name: l.assignedUser.name, email: l.assignedUser.email } : null,
+        ownedBy: l.ownedBy ? { id: l.ownedBy.id, name: l.ownedBy.name, email: l.ownedBy.email } : null,
         notes: l.Note || [],
         history: l.EntityHistory || []
       } : null;
-      
       setLead(mappedLead);
       setEditOwner(l?.ownedBy?.id || null);
       setEditAssigned(l?.agent?.id || null);
@@ -193,7 +234,20 @@ export default function LeadDetailContent({ leadId }: Props) {
     (canEditStage && editStage !== (lead?.stage?.id || null))
   );
 
-  const refreshLead = () => fetch(`/api/lead/${leadId}`).then(r=>r.json()).then(d=>setLead(d.result?.data ?? null));
+  const refreshLead = () => fetch(`/api/lead/${leadId}`)
+    .then(r => r.json())
+    .then(d => {
+      const l = d.result?.data ?? null;
+      const mappedLead = l ? {
+        ...l,
+        stage: l.Stage ? { id: l.Stage.id, name: l.Stage.name } : null,
+        agent: l.assignedUser ? { id: l.assignedUser.id, name: l.assignedUser.name, email: l.assignedUser.email } : null,
+        ownedBy: l.ownedBy ? { id: l.ownedBy.id, name: l.ownedBy.name, email: l.ownedBy.email } : null,
+        notes: l.Note || [],
+        history: l.EntityHistory || []
+      } : null;
+      setLead(mappedLead);
+    });
 
   const handleAddNote = async () => {
     if (!note.trim() || !lead) return;
@@ -268,6 +322,17 @@ export default function LeadDetailContent({ leadId }: Props) {
         <div><b>Phone:</b> {lead.phone}</div>
         <div><b>Email:</b> {lead.email}</div>
         <div><b>Address:</b> {lead.address}</div>
+        {/* DEMO CODE SECTION */}
+        {(userRole === "ADMIN" || userRole === "AGENT") && (
+          <div className="my-2 p-3 rounded border bg-blue-50">
+            <b>Demo Code:</b>{" "}
+            {lead.demoCode ? (
+              <span className="font-mono text-green-700 bg-green-100 px-2 py-1 rounded ml-2">{lead.demoCode}</span>
+            ) : (
+              <IssueDemoCodeButton leadId={lead.id} onIssued={refreshLead} />
+            )}
+          </div>
+        )}
         {/* stage */}
         <div className="flex items-center gap-2">
           <b>Stage:</b>

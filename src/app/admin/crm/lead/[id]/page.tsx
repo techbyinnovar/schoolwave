@@ -22,6 +22,7 @@ interface LeadDetail {
   agent?: { id: string; name?: string | null; email: string } | null;
   notes: Note[];
   history: LeadHistory[];
+  demoCode?: string | null;
 }
 
 interface Note {
@@ -192,6 +193,39 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
           <div><b>Phone:</b> {lead.phone}</div>
           <div><b>Email:</b> {lead.email}</div>
           <div><b>Address:</b> {lead.address}</div>
+
+          {/* Demo Code Display/Issue Section */}
+          <div className="flex items-center gap-2">
+            <b>Demo Code:</b>
+            {lead.demoCode ? (
+              <span className="font-mono bg-green-100 px-2 py-1 rounded text-green-800">{lead.demoCode}</span>
+            ) : ((userRole === "ADMIN" || userRole === "AGENT") && (
+              <button
+                className="bg-blue-600 text-white px-3 py-1 rounded"
+                disabled={saving}
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    const res = await fetch(`/api/lead/${lead.id}/demo-code`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                    });
+                    if (!res.ok) throw new Error("Failed to issue demo code");
+                    // Refresh lead
+                    const data = await res.json();
+                    setLead(data.result?.data ?? null);
+                  } catch (e: any) {
+                    alert(e.message || "Failed to issue demo code");
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                Issue Demo Code
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center gap-2">
             <b>Stage:</b>
             {canEditStage && editMode ? (
