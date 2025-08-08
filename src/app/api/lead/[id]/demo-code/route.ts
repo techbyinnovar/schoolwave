@@ -38,8 +38,9 @@ export async function POST(
 
     // Detect if any info will be updated
     let infoUpdated = false;
+    const leadAny = lead as any;
     for (const key of allowedFields) {
-      if (leadUpdates[key] !== undefined && leadUpdates[key] !== lead[key]) {
+      if (leadUpdates[key] !== undefined && leadUpdates[key] !== leadAny[key]) {
         infoUpdated = true;
         break;
       }
